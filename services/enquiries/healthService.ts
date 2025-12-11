@@ -7,19 +7,6 @@ import fs from "fs";
 export const getHealthEnquiries = async () => {
   const rowsData = await Health.find().sort({ createdAt: -1 }).lean();
 
-  // const rows = rowsData.map((r) => ({
-  //   id: r._id, // use MongoDB _id for consistency
-  //   name: r.fullName,
-  //   email: r.email,
-  //   dob: r.dob || "",
-  //   location: r.location || "",
-  //   occupation: r.occupation || "",
-  //   annualIncome: r.annualIncome || 0,
-  //   familyMembers: r.familyMembers || 0,
-  //   mobile: r.phone,
-  //   subService: r.subService,
-  //   uploadedFile: r.uploadedFile || ""
-  // }));
     const rows = rowsData.map((r) => ({
     id: r._id, // use MongoDB _id for consistency
     name: r.fullName,
@@ -95,10 +82,7 @@ export const getHealthEnquiries = async () => {
   };
 };
 
-// ✅ Create single health enquiry
-// export const createHealthEnquiry = async (payload: Partial<IHealth>) => {
-//   return await Health.create(payload);
-// };
+
 
 export const createHealthEnquiry = async (payload: Partial<IHealth>) => {
   // 1️⃣ Validate required fields
@@ -106,17 +90,7 @@ export const createHealthEnquiry = async (payload: Partial<IHealth>) => {
     throw new Error("Either email or phone number is required.");
   }
 
-  // 2️⃣ Check for existing entry with same email or phone
-  // const existing = await Health.findOne({
-  //   $or: [
-  //     { email: payload.email || null },
-  //     { phone: payload.phone || null },
-  //   ],
-  // });
 
-  // if (existing) {
-  //   throw new Error("Duplicate entry: An enquiry with this email or phone already exists.");
-  // }
 
   // 3️⃣ Create new entry
   return await Health.create(payload);
@@ -133,73 +107,6 @@ export const deleteHealthEnquiry = async (id: string) => {
   return await Health.findByIdAndDelete(id);
 };
 
-// ✅ Bulk create from Excel (skip duplicates & return summary)
-// export const bulkCreateHealthFromExcel = async (filePath: string) => {
-//   const workbook = XLSX.readFile(filePath);
-//   const sheetName = workbook.SheetNames[0];
-//   const sheet = workbook.Sheets[sheetName];
-//   const data: any[] = XLSX.utils.sheet_to_json(sheet);
-
-//   // 🔹 Normalize headers (case-insensitive)
-//   const enquiries: Partial<IHealth>[] = data.map((row) => {
-//     const normalizedRow: any = {};
-//     for (const key in row) {
-//       normalizedRow[key.trim().toLowerCase()] = row[key];
-//     }
-
-//     return {
-//       fullName: normalizedRow["full name"],
-//       email: normalizedRow["email"],
-//       phone: normalizedRow["phone"],
-//       dob: normalizedRow["dob"] || "",
-//       location: normalizedRow["location"] || "",
-//       occupation: normalizedRow["occupation"] || "",
-//       annualIncome: normalizedRow["annual income"] || 0,
-//       familyMembers: normalizedRow["family members"] || 0,
-//       mainService: normalizedRow["main service"],
-//       subService: normalizedRow["sub service"],
-//       bookAppointment: normalizedRow["book appointment"] === "Yes",
-//       uploadedFile: normalizedRow["uploaded file"] || ""
-//     };
-//   }).filter(
-//     (r) => !(r.fullName && r.fullName.trim().toLowerCase().startsWith("customer name"))
-//   );
-
-//   // 🔹 Get existing emails/phones
-//   const allEmails = enquiries.map((e) => e.email).filter(Boolean);
-//   const allPhones = enquiries.map((e) => e.phone).filter(Boolean);
-
-//   const existing = await Health.find({
-//     $or: [
-//       { email: { $in: allEmails } },
-//       { phone: { $in: allPhones } }
-//     ]
-//   }).lean();
-
-//   const existingEmails = new Set(existing.map((e) => e.email));
-//   const existingPhones = new Set(existing.map((e) => e.phone));
-
-//   // 🔹 Split into duplicates and new
-//   const duplicates: any[] = [];
-//   const newEntries = enquiries.filter((e) => {
-//     const isDuplicate =
-//       (e.email && existingEmails.has(e.email)) ||
-//       (e.phone && existingPhones.has(e.phone));
-//     if (isDuplicate) duplicates.push(e);
-//     return !isDuplicate;
-//   });
-
-//   // 🔹 Insert only unique
-//   const inserted = await Health.insertMany(newEntries);
-//   fs.unlinkSync(filePath); // remove file after processing
-
-//   return {
-//     message: `${inserted.length} new enquiries added. ${duplicates.length} duplicates skipped.`,
-//     insertedCount: inserted.length,
-//     skippedCount: duplicates.length,
-//     duplicates
-//   };
-// };
 
 
 export const bulkCreateHealthFromExcel = async (filePath: string) => {
@@ -207,6 +114,18 @@ export const bulkCreateHealthFromExcel = async (filePath: string) => {
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
   const data: any[] = XLSX.utils.sheet_to_json(sheet);
+
+  const excelDateToJSDate = (serial: number) => {
+  const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+  const date = new Date(excelEpoch.getTime() + serial * 86400000);
+
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const year = date.getUTCFullYear();
+
+  return `${day}-${month}-${year}`;
+};
+
 
   // 🔹 Normalize headers (case-insensitive)
   const enquiries: Partial<IHealth>[] = data.map((row) => {
@@ -219,8 +138,12 @@ export const bulkCreateHealthFromExcel = async (filePath: string) => {
       fullName: normalizedRow["full name"],
       email: normalizedRow["email"],
       phone: normalizedRow["phone"],
-      dob: normalizedRow["dob"] || "",
-      location: normalizedRow["location"] || "",
+      // dob: normalizedRow["dob"] || "",
+      dob:
+  typeof normalizedRow["dob"] === "number"
+    ? excelDateToJSDate(normalizedRow["dob"])
+    : normalizedRow["dob"] || "",
+      location: normalizedRow["location/pincode"] || "",
       occupation: normalizedRow["occupation"] || "",
       annualIncome: normalizedRow["annual income"] || 0,
       familyMembers: normalizedRow["family members"] || 0,
