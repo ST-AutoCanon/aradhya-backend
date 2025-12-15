@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+
+# Env files
+.env
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Runtime files
+pids/
+*.pid
+*.seed
+
+
+# uploaded_files
+uploaded_files/*
+!uploaded_files/
+!uploaded_files/.gitkeep
+
+# Signature_files
+Signature_files/*
+!Signature_files/
+!Signature_files/.gitkeep
+
+# Uploads (IMPORTANT)
+uploads/*
+!uploads/
+!uploads/.gitkeep
+
+uploads/resume/*
+!uploads/resume/
+!uploads/resume/.gitkeep
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+
+# Temp files
+tmp/
