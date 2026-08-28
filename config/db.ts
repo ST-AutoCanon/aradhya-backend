@@ -17,17 +17,24 @@
 
 // export default connectDB;
 
+
+
 import mongoose from "mongoose";
 
 const connectDB = async (): Promise<void> => {
   try {
-    await mongoose.connect(
-      "mongodb://insuranceadmin:admin@122.166.77.12:27017/insurance-login"
-    );
+    const mongoUri = process.env.MONGODB_URI;
+
+    if (!mongoUri) {
+      throw new Error("MONGODB_URI is not defined in .env");
+    }
+
+    await mongoose.connect(mongoUri);
+
     console.log("✅ MongoDB connected successfully");
   } catch (err: any) {
     console.error("❌ MongoDB connection error:", err.message);
-    process.exit(1); // Exit the app if connection fails
+    process.exit(1);
   }
 };
 
