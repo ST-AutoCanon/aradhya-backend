@@ -24,16 +24,22 @@ import bannerRoutes from "./routes/bannerRoutes";
 import excelTemplatesRoutes from "./routes/excelTemplatesRoutes";
 import jobRoutes from "./routes/jobRoutes";
 import jobApplicationRoutes from "./routes/jobApplicationRoutes";
+import policyRoutes from "./routes/policyInfoRoutes";
 import cookieParser from "cookie-parser";
+
+import { startPolicyExpiryCron } from "./cron/policyExpiryCron";
 
 const app = express();
 connectDB();
-   seedAdminUser();
+seedAdminUser();
+   
+startPolicyExpiryCron();
 
 
 const allowedOrigins = [
   "https://dakseyu.info",
   "https://www.dakseyu.info",
+  "http://localhost:1573"
 ];
 app.use(
   cors({
@@ -84,6 +90,8 @@ app.use("/api/banner", bannerRoutes);
 app.use("/api/excel", excelTemplatesRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/job-applications", jobApplicationRoutes);
+app.use("/api/policies", policyRoutes);
+
 // const PORT = process.env.PORT || 5009;
 // app.listen(PORT, () => console.log(`🚀 Server running on http://0.0.0.0:${PORT}`));
 

@@ -22,7 +22,7 @@ import mongoose from "mongoose";
 const connectDB = async (): Promise<void> => {
   try {
     await mongoose.connect(
-      "mongodb://insuranceadmin:admin@192.168.1.16:27017/insureance"
+      "mongodb://insuranceadmin:admin@122.166.77.12:27017/insurance-login"
     );
     console.log("✅ MongoDB connected successfully");
   } catch (err: any) {
