@@ -1,6 +1,6 @@
 // controllers/emailController.ts
 import { Request, Response } from "express";
-import { sendMail, EmailAttachment } from "../services/emailService";
+import { sendMail, EmailAttachment } from "../services/messaging/emailService";
 import fs from "fs";
 import path from "path";
 

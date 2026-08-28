@@ -15,7 +15,7 @@ export const sendMail = async (
   html?: string
 ) => {
   const mailOptions = {
-    from: `"My App" <${process.env.EMAIL_USER}>`,
+    from: `"Aradhya Insurance Team" <${process.env.EMAIL_USER}>`,
     to,
     subject,
     text,
