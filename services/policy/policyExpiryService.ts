@@ -1,90 +1,113 @@
 
 import Policy from "../../models/policyInfo";
-import PolicyNotification, {
-  PolicyNotificationType,
-} from "../../models/PolicyNotification";
+import PolicyNotification from "../../models/PolicyNotification";
+
+import PolicyNotificationConfig, {
+  IPolicyNotificationConfig,
+  PolicyNotificationScheduleType,
+} from "../../models/PolicyNotificationConfig";
 
 import { sendMail } from "../messaging/emailService";
 
-interface NotificationConfig {
-  type: PolicyNotificationType;
-  daysUntilExpiry: number;
-  subject: (customerName: string) => string;
-}
+/**
+ * ============================================================
+ * TYPES
+ * ============================================================
+ */
+
+type NotificationConfig = IPolicyNotificationConfig;
 
 /**
- * Policy expiry notification configurations.
- *
- * Notifications:
- *
- * - 7 days before expiry
- * - 1 day before expiry
- * - On/after expiry
+ * ============================================================
+ * INDIA TIMEZONE
+ * ============================================================
  */
-const notificationConfigs: NotificationConfig[] = [
-  {
-    type: "7_DAY_REMINDER",
-    daysUntilExpiry: 7,
-    subject: (customerName) =>
-      `Policy Expiry Reminder - 7 Days - ${customerName}`,
-  },
 
-  {
-    type: "1_DAY_REMINDER",
-    daysUntilExpiry: 1,
-    subject: (customerName) =>
-      `Policy Expiry Reminder - Tomorrow - ${customerName}`,
-  },
-
-  {
-    type: "EXPIRED",
-    daysUntilExpiry: 0,
-    subject: (customerName) =>
-      `Policy Expired - ${customerName}`,
-  },
-];
+const INDIA_TIMEZONE = "Asia/Kolkata";
 
 /**
- * Get start of day.
+ * ============================================================
+ * MILLISECONDS IN ONE DAY
+ * ============================================================
  */
-const getStartOfDay = (date: Date): Date => {
-  const result = new Date(date);
 
-  result.setHours(0, 0, 0, 0);
+const MILLISECONDS_IN_DAY = 1000 * 60 * 60 * 24;
 
-  return result;
+/**
+ * ============================================================
+ * GET INDIA DATE STRING
+ * ============================================================
+ *
+ * Returns:
+ *
+ * YYYY-MM-DD
+ */
+
+const getIndiaDateString = (
+  date: Date = new Date()
+): string => {
+  return date.toLocaleDateString("en-CA", {
+    timeZone: INDIA_TIMEZONE,
+  });
 };
 
 /**
- * Get end of day.
+ * ============================================================
+ * CREATE INDIA DATE
+ * ============================================================
+ *
+ * Creates UTC midnight representing the Indian
+ * calendar date.
+ *
+ * Example:
+ *
+ * 2026-08-29
+ *
+ * becomes:
+ *
+ * 2026-08-29T00:00:00.000Z
  */
-const getEndOfDay = (date: Date): Date => {
-  const result = new Date(date);
 
-  result.setHours(23, 59, 59, 999);
-
-  return result;
-};
-
-/**
- * Add days to a date.
- */
-const addDays = (
-  date: Date,
-  days: number
+const createIndiaDate = (
+  dateString: string
 ): Date => {
-  const result = new Date(date);
+  const [year, month, day] = dateString
+    .split("-")
+    .map(Number);
 
-  result.setDate(
-    result.getDate() + days
+  return new Date(
+    Date.UTC(
+      year,
+      month - 1,
+      day,
+      0,
+      0,
+      0,
+      0
+    )
   );
-
-  return result;
 };
 
 /**
- * Format policy expiry date in Indian format.
+ * ============================================================
+ * GET DATE KEY
+ * ============================================================
  */
+
+const getDateKey = (
+  date: Date
+): string => {
+  return date
+    .toISOString()
+    .slice(0, 10);
+};
+
+/**
+ * ============================================================
+ * FORMAT EXPIRY DATE
+ * ============================================================
+ */
+
 const formatExpiryDate = (
   endDate: Date | string
 ): string => {
@@ -94,50 +117,211 @@ const formatExpiryDate = (
       day: "2-digit",
       month: "long",
       year: "numeric",
-      timeZone: "Asia/Kolkata",
+      timeZone: INDIA_TIMEZONE,
     }
   );
 };
 
 /**
- * Build email HTML.
+ * ============================================================
+ * GET POLICY EXPIRY DATE
+ * ============================================================
+ *
+ * Converts policy.endDate into the Indian
+ * calendar date represented as UTC midnight.
+ *
+ * Example:
+ *
+ * endDate:
+ * 2026-08-28T18:30:00.000Z
+ *
+ * India date:
+ * 2026-08-29
+ *
+ * Stored:
+ * 2026-08-29T00:00:00.000Z
  */
-const buildEmailHtml = (
-  notificationType: PolicyNotificationType,
-  policy: any
+
+const getPolicyExpiryDate = (
+  endDate: Date | string
+): Date => {
+  const indiaDateString = new Date(
+    endDate
+  ).toLocaleDateString("en-CA", {
+    timeZone: INDIA_TIMEZONE,
+  });
+
+  return createIndiaDate(
+    indiaDateString
+  );
+};
+
+/**
+ * ============================================================
+ * BUILD SUBJECT
+ * ============================================================
+ */
+
+const buildSubject = (
+  config: NotificationConfig,
+  customerName: string
 ): string => {
-  const expiryDate = formatExpiryDate(
-    policy.endDate
+  let subject =
+    config.subject ||
+    "Policy Expiry Notification";
+
+  const daysBefore =
+    Number(config.daysBeforeExpiry ?? 0);
+
+  const daysAfter =
+    Number(config.daysAfterExpiry ?? 0);
+
+  const lastNDays =
+    Number(config.lastNDays ?? 0);
+
+  // Replace customer name
+  subject = subject.replace(
+    /{{customerName}}/gi,
+    customerName || ""
   );
 
-  let heading = "";
-  let message = "";
+  // Replace generic days placeholder
+  subject = subject.replace(
+    /{{days}}/gi,
+    String(
+      config.type === "BEFORE_EXPIRY"
+        ? daysBefore
+        : config.type === "AFTER_EXPIRY"
+        ? daysAfter
+        : config.type === "LAST_N_DAYS"
+        ? lastNDays
+        : 0
+    )
+  );
 
-  switch (notificationType) {
-    case "7_DAY_REMINDER":
-      heading = "Policy Expiring in 7 Days";
-      message =
-        "Your insurance policy will expire in 7 days.";
-      break;
+  // Optional specific placeholders
+  subject = subject.replace(
+    /{{daysBeforeExpiry}}/gi,
+    String(daysBefore)
+  );
 
-    case "1_DAY_REMINDER":
-      heading = "Policy Expiring Tomorrow";
-      message =
-        "Your insurance policy will expire tomorrow.";
-      break;
+  subject = subject.replace(
+    /{{daysAfterExpiry}}/gi,
+    String(daysAfter)
+  );
 
-    case "EXPIRED":
-      heading = "Policy Has Expired";
-      message =
-        "Your insurance policy has already expired. Please renew it as soon as possible.";
-      break;
+  subject = subject.replace(
+    /{{lastNDays}}/gi,
+    String(lastNDays)
+  );
+
+  // Expiry date
+  if (config.type) {
+    // This can be replaced later if you want expiryDate
+    // from the policy available here.
+  }
+
+  return subject;
+};
+
+/**
+ * ============================================================
+ * GET REMINDER HEADING
+ * ============================================================
+ */
+
+const getHeading = (
+  config: NotificationConfig
+): string => {
+  switch (config.type) {
+    case "BEFORE_EXPIRY": {
+      const days =
+        config.daysBeforeExpiry;
+
+      return `Policy Expiring in ${days} Day${
+        days === 1 ? "" : "s"
+      }`;
+    }
+
+    case "ON_EXPIRY":
+      return "Policy Expires Today";
+
+    case "AFTER_EXPIRY": {
+      const days =
+        config.daysAfterExpiry;
+
+      return `Policy Expired ${days} Day${
+        days === 1 ? "" : "s"
+      } Ago`;
+    }
+
+    case "LAST_N_DAYS":
+      return "Policy Expiry Reminder";
 
     default:
-      heading = "Policy Expiry Notification";
-      message =
-        "Please check your insurance policy expiry details.";
-      break;
+      return "Policy Expiry Notification";
   }
+};
+
+/**
+ * ============================================================
+ * GET REMINDER MESSAGE
+ * ============================================================
+ */
+
+const getMessage = (
+  config: NotificationConfig
+): string => {
+  switch (config.type) {
+    case "BEFORE_EXPIRY": {
+      const days =
+        config.daysBeforeExpiry;
+
+      return `Your insurance policy will expire in ${days} day${
+        days === 1 ? "" : "s"
+      }.`;
+    }
+
+    case "ON_EXPIRY":
+      return "Your insurance policy expires today. Please renew it as soon as possible.";
+
+    case "AFTER_EXPIRY": {
+      const days =
+        config.daysAfterExpiry;
+
+      return `Your insurance policy expired ${days} day${
+        days === 1 ? "" : "s"
+      } ago. Please renew it as soon as possible.`;
+    }
+
+    case "LAST_N_DAYS":
+      return "Your insurance policy is approaching its expiry date. Please renew it as soon as possible.";
+
+    default:
+      return "Please check your insurance policy expiry details.";
+  }
+};
+
+/**
+ * ============================================================
+ * BUILD EMAIL HTML
+ * ============================================================
+ */
+
+const buildEmailHtml = (
+  config: NotificationConfig,
+  policy: any
+): string => {
+  const expiryDate =
+    formatExpiryDate(
+      policy.endDate
+    );
+
+  const heading =
+    getHeading(config);
+
+  const message =
+    getMessage(config);
 
   return `
     <div style="
@@ -167,10 +351,12 @@ const buildEmailHtml = (
           max-width: 600px;
         "
       >
+
         <tr>
           <td>
             <strong>Customer Name</strong>
           </td>
+
           <td>
             ${policy.customerName}
           </td>
@@ -180,6 +366,7 @@ const buildEmailHtml = (
           <td>
             <strong>Policy Number</strong>
           </td>
+
           <td>
             ${policy.policyNumber}
           </td>
@@ -189,6 +376,7 @@ const buildEmailHtml = (
           <td>
             <strong>Vehicle Number</strong>
           </td>
+
           <td>
             ${policy.vehicleNo}
           </td>
@@ -198,6 +386,7 @@ const buildEmailHtml = (
           <td>
             <strong>Insurer</strong>
           </td>
+
           <td>
             ${policy.insurerCompany}
           </td>
@@ -207,14 +396,17 @@ const buildEmailHtml = (
           <td>
             <strong>Policy Expiry Date</strong>
           </td>
+
           <td>
             ${expiryDate}
           </td>
         </tr>
+
       </table>
 
       <p style="margin-top: 20px;">
-        Please contact us if you would like to renew your policy.
+        Please contact us if you would like
+        to renew your policy.
       </p>
 
       <p>
@@ -227,24 +419,277 @@ const buildEmailHtml = (
 };
 
 /**
- * Process EMAIL notification for one policy.
- *
- * Only email is supported.
- *
- * Email status is tracked independently using
- * PolicyNotification.email.
- *
- * This prevents duplicate emails and allows
- * failed emails to be retried.
+ * ============================================================
+ * GET DAYS UNTIL EXPIRY
+ * ============================================================
  */
+
+const getDaysUntilExpiry = (
+  policy: any,
+  today: Date
+): number => {
+  const expiryDate =
+    getPolicyExpiryDate(
+      policy.endDate
+    );
+
+  const difference =
+    expiryDate.getTime() -
+    today.getTime();
+
+  return Math.round(
+    difference /
+      MILLISECONDS_IN_DAY
+  );
+};
+
+/**
+ * ============================================================
+ * GET SCHEDULED DATE
+ * ============================================================
+ *
+ * Returns today's date if reminder is due.
+ */
+
+const getScheduledDateForConfig = (
+  policy: any,
+  config: NotificationConfig,
+  today: Date
+): Date | null => {
+  const daysUntilExpiry =
+    getDaysUntilExpiry(
+      policy,
+      today
+    );
+
+  /**
+   * ========================================================
+   * BEFORE EXPIRY
+   * ========================================================
+   */
+
+  if (
+    config.type ===
+    "BEFORE_EXPIRY"
+  ) {
+    const daysBefore =
+      config.daysBeforeExpiry;
+
+    if (
+      daysBefore ===
+        undefined ||
+      daysBefore === null ||
+      daysBefore < 1
+    ) {
+      return null;
+    }
+
+    if (
+      daysUntilExpiry ===
+      daysBefore
+    ) {
+      return today;
+    }
+
+    return null;
+  }
+
+  /**
+   * ========================================================
+   * ON EXPIRY
+   * ========================================================
+   */
+
+  if (
+    config.type ===
+    "ON_EXPIRY"
+  ) {
+    if (
+      daysUntilExpiry === 0
+    ) {
+      return today;
+    }
+
+    return null;
+  }
+
+  /**
+   * ========================================================
+   * AFTER EXPIRY
+   * ========================================================
+   */
+
+  if (
+    config.type ===
+    "AFTER_EXPIRY"
+  ) {
+    const daysAfter =
+      config.daysAfterExpiry;
+
+    if (
+      daysAfter ===
+        undefined ||
+      daysAfter === null ||
+      daysAfter < 1
+    ) {
+      return null;
+    }
+
+    if (
+      daysUntilExpiry ===
+      -daysAfter
+    ) {
+      return today;
+    }
+
+    return null;
+  }
+
+  /**
+   * ========================================================
+   * LAST N DAYS
+   * ========================================================
+   *
+   * Example:
+   *
+   * lastNDays = 3
+   * expiry = 30 Aug
+   *
+   * Sends:
+   *
+   * 28 Aug
+   * 29 Aug
+   * 30 Aug
+   */
+
+  if (
+    config.type ===
+    "LAST_N_DAYS"
+  ) {
+    const lastNDays =
+      config.lastNDays;
+
+    if (
+      lastNDays ===
+        undefined ||
+      lastNDays === null ||
+      lastNDays < 1
+    ) {
+      return null;
+    }
+
+    if (
+      daysUntilExpiry >= 0 &&
+      daysUntilExpiry <
+        lastNDays
+    ) {
+      return today;
+    }
+
+    return null;
+  }
+
+  return null;
+};
+
+/**
+ * ============================================================
+ * GET CONFIGURATION VALUE
+ * ============================================================
+ *
+ * Used to distinguish reminders such as:
+ *
+ * BEFORE_EXPIRY + 2
+ * BEFORE_EXPIRY + 5
+ * AFTER_EXPIRY + 1
+ * AFTER_EXPIRY + 3
+ * LAST_N_DAYS + 8
+ */
+
+const getScheduleValue = (
+  config: NotificationConfig
+): number => {
+  switch (config.type) {
+    case "BEFORE_EXPIRY":
+      return (
+        config.daysBeforeExpiry ??
+        0
+      );
+
+    case "AFTER_EXPIRY":
+      return (
+        config.daysAfterExpiry ??
+        0
+      );
+
+    case "LAST_N_DAYS":
+      return (
+        config.lastNDays ??
+        0
+      );
+
+    case "ON_EXPIRY":
+      return 0;
+
+    default:
+      return 0;
+  }
+};
+
+/**
+ * ============================================================
+ * GET NOTIFICATION QUERY
+ * ============================================================
+ *
+ * IMPORTANT:
+ *
+ * The same query is used for:
+ *
+ * 1. findOne()
+ * 2. duplicate recovery
+ *
+ * This prevents mismatches.
+ */
+
+const buildNotificationQuery = (
+  policy: any,
+  config: NotificationConfig,
+  expiryDate: Date,
+  scheduledDate: Date,
+  scheduleValue: number
+) => {
+  return {
+    policyId: policy._id,
+
+    reminderConfigId:
+      config._id,
+
+    expiryDate,
+
+    scheduleType:
+      config.type,
+
+    scheduleValue,
+
+    scheduledDate,
+  };
+};
+
+/**
+ * ============================================================
+ * PROCESS ONE NOTIFICATION
+ * ============================================================
+ */
+
 const processNotification = async (
   policy: any,
-  config: NotificationConfig
+  config: NotificationConfig,
+  scheduledDate: Date
 ): Promise<void> => {
   /**
-   * ================================
-   * EMAIL RECIPIENT
-   * ================================
+   * ========================================================
+   * RECIPIENT
+   * ========================================================
    */
 
   const recipientEmail =
@@ -255,12 +700,6 @@ const processNotification = async (
           .trim()
       : null;
 
-  /**
-   * ================================
-   * NO EMAIL
-   * ================================
-   */
-
   if (!recipientEmail) {
     console.log(
       `⚠️ No email for policy ${policy.policyNumber}. Skipping.`
@@ -269,173 +708,546 @@ const processNotification = async (
     return;
   }
 
-  const subject = config.subject(
-    policy.customerName
+  /**
+   * ========================================================
+   * EXPIRY DATE SNAPSHOT
+   * ========================================================
+   *
+   * REQUIRED BY SCHEMA.
+   */
+
+  const expiryDate =
+    getPolicyExpiryDate(
+      policy.endDate
+    );
+
+  /**
+   * ========================================================
+   * SUBJECT
+   * ========================================================
+   */
+
+const subject =
+  buildSubject(
+    config,
+    policy
   );
 
   /**
-   * ================================
+   * ========================================================
+   * SCHEDULE VALUE
+   * ========================================================
+   */
+
+  const scheduleValue =
+    getScheduleValue(config);
+
+  /**
+   * ========================================================
+   * NOTIFICATION QUERY
+   * ========================================================
+   */
+
+  const notificationQuery =
+    buildNotificationQuery(
+      policy,
+      config,
+      expiryDate,
+      scheduledDate,
+      scheduleValue
+    );
+
+  console.log(
+    "🔎 Notification lookup:"
+  );
+
+  console.log(
+    JSON.stringify(
+      {
+        policyId:
+          policy._id?.toString(),
+
+        reminderConfigId:
+          config._id?.toString(),
+
+        expiryDate:
+          expiryDate.toISOString(),
+
+        scheduleType:
+          config.type,
+
+        scheduleValue,
+
+        scheduledDate:
+          scheduledDate.toISOString(),
+      },
+      null,
+      2
+    )
+  );
+
+  /**
+   * ========================================================
    * FIND EXISTING NOTIFICATION
-   * ================================
+   * ========================================================
    */
 
   let notification =
-    await PolicyNotification.findOne({
-      policyId: policy._id,
-      notificationType: config.type,
-    });
+    await PolicyNotification.findOne(
+      notificationQuery
+    );
 
   /**
-   * ================================
+   * ========================================================
    * CREATE NOTIFICATION
-   * ================================
+   * ========================================================
    */
 
   if (!notification) {
-    notification =
-      await PolicyNotification.create({
-        policyId: policy._id,
-        notificationType: config.type,
-        subject,
+    console.log(
+      "🆕 Notification does not exist. Creating..."
+    );
 
-        email: {
-          recipient: recipientEmail,
-          status: "PENDING",
-          attempts: 0,
-        },
-      });
+    try {
+      notification =
+        await PolicyNotification.create(
+          {
+            policyId:
+              policy._id,
+
+            reminderConfigId:
+              config._id,
+
+            /**
+             * IMPORTANT:
+             * This was the original missing field.
+             */
+            expiryDate,
+
+            scheduleType:
+              config.type as PolicyNotificationScheduleType,
+
+            scheduleValue,
+
+            scheduledDate,
+
+            subject,
+
+            email: {
+              recipient:
+                recipientEmail,
+
+              status:
+                "PENDING",
+
+              attempts: 0,
+            },
+          }
+        );
+
+      console.log(
+        "✅ Notification document created:"
+      );
+
+      console.log(
+        `   Notification ID: ${notification._id}`
+      );
+
+      console.log(
+        `   Expiry: ${getDateKey(
+          expiryDate
+        )}`
+      );
+    } catch (
+      error: any
+    ) {
+      /**
+       * ====================================================
+       * DUPLICATE KEY
+       * ====================================================
+       */
+
+      if (
+        error?.code === 11000
+      ) {
+        console.log(
+          "ℹ️ Notification already exists due to duplicate index. Loading existing document..."
+        );
+
+        notification =
+          await PolicyNotification.findOne(
+            notificationQuery
+          );
+
+        /**
+         * If duplicate happened but the query
+         * still cannot find the document, log it.
+         */
+
+        if (!notification) {
+          console.error(
+            "❌ Duplicate key was reported, but notification could not be found."
+          );
+
+          console.error(
+            "Duplicate error:",
+            error
+          );
+
+          return;
+        }
+      } else {
+        /**
+         * ==================================================
+         * IMPORTANT:
+         *
+         * DO NOT HIDE THIS ERROR.
+         * ==================================================
+         */
+
+        console.error(
+          "❌ PolicyNotification.create() failed"
+        );
+
+        console.error(
+          "❌ Error name:",
+          error?.name
+        );
+
+        console.error(
+          "❌ Error message:",
+          error?.message
+        );
+
+        console.error(
+          "❌ Error code:",
+          error?.code
+        );
+
+        console.error(
+          "❌ Full Mongo/Mongoose error:",
+          error
+        );
+
+        throw error;
+      }
+    }
   }
 
   /**
-   * ================================
-   * ADD EMAIL IF MISSING
-   * ================================
+   * ========================================================
+   * SAFETY CHECK
+   * ========================================================
+   */
+
+  if (!notification) {
+    console.error(
+      `❌ Could not create/find notification for ${policy.policyNumber}`
+    );
+
+    return;
+  }
+
+  /**
+   * ========================================================
+   * EMAIL OBJECT
+   * ========================================================
    */
 
   if (!notification.email) {
     notification.email = {
-      recipient: recipientEmail,
-      status: "PENDING",
+      recipient:
+        recipientEmail,
+
+      status:
+        "PENDING",
+
       attempts: 0,
     };
   }
 
   /**
-   * Update recipient if the policy email
-   * has changed.
+   * ========================================================
+   * UPDATE RECIPIENT
+   * ========================================================
    */
+
   if (
-    notification.email.recipient !==
+    notification.email
+      .recipient !==
     recipientEmail
   ) {
-    notification.email.recipient =
+    notification.email
+      .recipient =
       recipientEmail;
+
+    if (
+      notification.email
+        .status !==
+      "SENT"
+    ) {
+      notification.email
+        .status =
+        "PENDING";
+    }
   }
+
+  /**
+   * ========================================================
+   * UPDATE SUBJECT
+   * ========================================================
+   */
+
+  notification.subject =
+    subject;
+
+  /**
+   * ========================================================
+   * SAVE BEFORE SEND
+   * ========================================================
+   */
 
   await notification.save();
 
   /**
-   * ================================
-   * SEND EMAIL
-   * ================================
+   * ========================================================
+   * ALREADY SENT
+   * ========================================================
    */
 
   if (
-    notification.email.status !== "SENT"
+    notification.email
+      .status ===
+    "SENT"
   ) {
-    try {
-      notification.email.attempts += 1;
-
-      notification.email.lastAttemptAt =
-        new Date();
-
-      notification.email.status =
-        "PENDING";
-
-      notification.email.errorMessage =
-        undefined;
-
-      await notification.save();
-
-      const html = buildEmailHtml(
-        config.type,
-        policy
-      );
-
-      await sendMail(
-        notification.email.recipient,
-        subject,
-        `Policy notification for ${policy.customerName}`,
-        html
-      );
-
-      /**
-       * Mark email as successfully sent.
-       */
-      notification.email.status = "SENT";
-
-      notification.email.sentAt =
-        new Date();
-
-      notification.email.errorMessage =
-        undefined;
-
-      await notification.save();
-
-      console.log(
-        `✅ ${config.type} EMAIL sent to ${notification.email.recipient} for policy ${policy.policyNumber}`
-      );
-    } catch (error: any) {
-      /**
-       * Mark email as failed.
-       *
-       * It will be retried on the next cron run.
-       */
-      notification.email.status =
-        "FAILED";
-
-      notification.email.errorMessage =
-        error?.message ||
-        "Unknown email sending error";
-
-      await notification.save();
-
-      console.error(
-        `❌ Failed ${config.type} EMAIL for policy ${policy.policyNumber}:`,
-        error
-      );
-    }
-  } else {
     console.log(
-      `⏭️ ${config.type} EMAIL already sent for policy ${policy.policyNumber}`
+      `⏭️ Already sent: ${config.name} | ` +
+      `${config.type} | ` +
+      `value=${scheduleValue} | ` +
+      `policy=${policy.policyNumber} | ` +
+      `date=${getDateKey(
+        scheduledDate
+      )} | ` +
+      `expiry=${getDateKey(
+        expiryDate
+      )}`
     );
+
+    return;
   }
 
   /**
-   * ================================
+   * ========================================================
+   * SEND EMAIL
+   * ========================================================
+   */
+
+  try {
+    /**
+     * ====================================================
+     * UPDATE ATTEMPT
+     * ====================================================
+     */
+
+    notification.email.attempts += 1;
+
+    notification.email
+      .lastAttemptAt =
+      new Date();
+
+    notification.email.status =
+      "PROCESSING";
+
+    notification.email
+      .errorMessage =
+      undefined;
+
+    await notification.save();
+
+    /**
+     * ====================================================
+     * BUILD HTML
+     * ====================================================
+     */
+
+    const html =
+      buildEmailHtml(
+        config,
+        policy
+      );
+
+    /**
+     * ====================================================
+     * SEND EMAIL
+     * ====================================================
+     */
+
+    console.log(
+      "📨 Sending email..."
+    );
+
+    console.log(
+      `   To: ${recipientEmail}`
+    );
+
+    console.log(
+      `   Subject: ${subject}`
+    );
+
+    const mailInfo =
+      await sendMail(
+        recipientEmail,
+
+        subject,
+
+        `Policy notification for ${policy.customerName}`,
+
+        html
+      );
+
+    /**
+     * ====================================================
+     * SUCCESS
+     * ====================================================
+     */
+
+    notification.email.status =
+      "SENT";
+
+    notification.email.sentAt =
+      new Date();
+
+    notification.email.messageId =
+      mailInfo?.messageId;
+
+    notification.email
+      .errorMessage =
+      undefined;
+
+    await notification.save();
+
+    /**
+     * ====================================================
+     * SUCCESS LOG
+     * ====================================================
+     */
+
+    console.log(
+      "========================================"
+    );
+
+    console.log(
+      "✅ EMAIL SENT SUCCESSFULLY"
+    );
+
+    console.log(
+      `📧 To: ${notification.email.recipient}`
+    );
+
+    console.log(
+      `🆔 Message ID: ${
+        mailInfo?.messageId ||
+        "N/A"
+      }`
+    );
+
+    console.log(
+      `📬 Response: ${
+        mailInfo?.response ||
+        "N/A"
+      }`
+    );
+
+    console.log(
+      `📅 Scheduled: ${getDateKey(
+        scheduledDate
+      )}`
+    );
+
+    console.log(
+      `📅 Expiry: ${getDateKey(
+        expiryDate
+      )}`
+    );
+
+    console.log(
+      "========================================"
+    );
+  } catch (
+    error: any
+  ) {
+    /**
+     * ====================================================
+     * EMAIL FAILED
+     * ====================================================
+     */
+
+    notification.email.status =
+      "FAILED";
+
+    notification.email
+      .errorMessage =
+      error?.message ||
+      "Unknown email sending error";
+
+    notification.email
+      .lastAttemptAt =
+      new Date();
+
+    await notification.save();
+
+    console.error(
+      "========================================"
+    );
+
+    console.error(
+      "❌ EMAIL SEND FAILED"
+    );
+
+    console.error(
+      `📧 To: ${notification.email.recipient}`
+    );
+
+    console.error(
+      `❌ Error: ${
+        error?.message ||
+        "Unknown error"
+      }`
+    );
+
+    console.error(
+      "========================================"
+    );
+
+    /**
+     * Do not throw here.
+     *
+     * This allows the cron to continue processing
+     * other policies/reminders.
+     */
+  }
+
+  /**
+   * ========================================================
    * FINAL STATUS
-   * ================================
+   * ========================================================
    */
 
   console.log(
-    `📊 ${config.type} completed for ${policy.policyNumber} | ` +
-      `Email: ${
-        notification.email?.status || "N/A"
-      }`
+    `📊 ${config.name} completed for ${policy.policyNumber} | ` +
+    `Email: ${
+      notification.email
+        ?.status || "N/A"
+    }`
   );
 };
 
 /**
- * Process policy expiry email notifications.
- *
- * Notifications:
- *
- * - 7 days before expiry
- * - 1 day before expiry
- * - On/after expiry
- *
- * ONLY EMAIL IS SENT.
+ * ============================================================
+ * PROCESS POLICY EXPIRY EMAILS
+ * ============================================================
  */
+
 export const processPolicyExpiryEmails =
   async (): Promise<void> => {
     console.log(
@@ -443,7 +1255,7 @@ export const processPolicyExpiryEmails =
     );
 
     console.log(
-      "📧 Policy expiry email job started"
+      "📧 Dynamic policy expiry email job started"
     );
 
     console.log(
@@ -451,13 +1263,14 @@ export const processPolicyExpiryEmails =
     );
 
     try {
-      const now = new Date();
-
       /**
-       * ================================
-       * SERVER TIME
-       * ================================
+       * ======================================================
+       * CURRENT SERVER TIME
+       * ======================================================
        */
+
+      const now =
+        new Date();
 
       console.log(
         "🕐 SERVER NOW:",
@@ -465,17 +1278,14 @@ export const processPolicyExpiryEmails =
       );
 
       /**
-       * ================================
+       * ======================================================
        * INDIA DATE
-       * ================================
+       * ======================================================
        */
 
       const indiaDateString =
-        now.toLocaleDateString(
-          "en-CA",
-          {
-            timeZone: "Asia/Kolkata",
-          }
+        getIndiaDateString(
+          now
         );
 
       console.log(
@@ -484,177 +1294,322 @@ export const processPolicyExpiryEmails =
       );
 
       /**
-       * ================================
-       * CREATE TODAY
-       * ================================
+       * ======================================================
+       * TODAY
+       * ======================================================
        */
 
-      const [
-        year,
-        month,
-        day,
-      ] = indiaDateString
-        .split("-")
-        .map(Number);
-
-      const today = new Date(
-        year,
-        month - 1,
-        day
-      );
+      const today =
+        createIndiaDate(
+          indiaDateString
+        );
 
       console.log(
-        "🧪 TODAY:",
-        today
+        "📅 TODAY:",
+        today.toISOString()
       );
 
       /**
-       * ================================
-       * PROCESS EACH CONFIG
-       * ================================
+       * ======================================================
+       * LOAD ACTIVE CONFIGURATIONS
+       * ======================================================
+       */
+
+      const configs =
+        await PolicyNotificationConfig.find(
+          {
+            enabled: true,
+          }
+        )
+          .sort({
+            createdAt: 1,
+          })
+          .lean();
+
+      console.log(
+        `⚙️ Active reminder configurations: ${configs.length}`
+      );
+
+      /**
+       * ======================================================
+       * NO CONFIGURATION
+       * ======================================================
+       */
+
+      if (
+        configs.length === 0
+      ) {
+        console.log(
+          "ℹ️ No active reminder configurations found."
+        );
+
+        return;
+      }
+
+      /**
+       * ======================================================
+       * LOAD ACTIVE POLICIES
+       * ======================================================
+       */
+
+      const policies =
+        await Policy.find(
+          {
+            isActive: true,
+
+            email: {
+              $exists: true,
+
+              $ne: "",
+            },
+          }
+        ).lean();
+
+      console.log(
+        `📋 Active policies with email: ${policies.length}`
+      );
+
+      /**
+       * ======================================================
+       * PROCESS EACH POLICY
+       * ======================================================
        */
 
       for (
-        const config of notificationConfigs
+        const policy of policies
       ) {
-        const targetDate = addDays(
-          today,
-          config.daysUntilExpiry
-        );
-
-        const startDate =
-          getStartOfDay(targetDate);
-
-        const endDate =
-          getEndOfDay(targetDate);
-
         console.log(
-          "----------------------------------------"
+          "========================================"
         );
 
         console.log(
-          `🔎 Checking ${config.type}`
+          `📋 Processing policy: ${policy.policyNumber}`
         );
 
         console.log(
-          "Target:",
-          targetDate.toLocaleDateString(
-            "en-IN"
-          )
+          `👤 Customer: ${policy.customerName}`
         );
 
         console.log(
-          "Start:",
-          startDate.toISOString()
+          `📅 Policy end date: ${formatExpiryDate(
+            policy.endDate
+          )}`
         );
-
-        console.log(
-          "End:",
-          endDate.toISOString()
-        );
-
-        let policies;
 
         /**
-         * ================================
-         * EXPIRED POLICIES
-         * ================================
+         * ====================================================
+         * EXPIRY SNAPSHOT
+         * ====================================================
          */
 
-        if (
-          config.type === "EXPIRED"
-        ) {
-          policies =
-            await Policy.find({
-              isActive: true,
-
-              /**
-               * Only policies having
-               * an email address.
-               */
-              email: {
-                $exists: true,
-                $ne: "",
-              },
-
-              endDate: {
-                $lt: startDate,
-              },
-            }).lean();
-        }
-
-        /**
-         * ================================
-         * UPCOMING EXPIRY
-         * ================================
-         */
-
-        else {
-          policies =
-            await Policy.find({
-              isActive: true,
-
-              /**
-               * Only policies having
-               * an email address.
-               */
-              email: {
-                $exists: true,
-                $ne: "",
-              },
-
-              endDate: {
-                $gte: startDate,
-                $lte: endDate,
-              },
-            }).lean();
-        }
+        const expiryDate =
+          getPolicyExpiryDate(
+            policy.endDate
+          );
 
         console.log(
-          `📋 ${config.type}: ${policies.length} policy(s) found`
+          `📅 Policy expiry snapshot: ${getDateKey(
+            expiryDate
+          )}`
         );
 
         /**
-         * ================================
-         * PROCESS POLICIES
-         * ================================
+         * ====================================================
+         * DAYS UNTIL EXPIRY
+         * ====================================================
+         */
+
+        const daysUntilExpiry =
+          getDaysUntilExpiry(
+            policy,
+            today
+          );
+
+        console.log(
+          `📊 Days until expiry: ${daysUntilExpiry}`
+        );
+
+        /**
+         * ====================================================
+         * PROCESS EACH CONFIGURATION
+         * ====================================================
          */
 
         for (
-          const policy of policies
+          const config of configs
         ) {
           console.log(
-            `📧 Processing ${policy.policyNumber} | ` +
-              `Email: ${
-                policy.email || "N/A"
-              }`
+            "----------------------------------------"
           );
+
+          console.log(
+            `🔎 Checking reminder: ${config.name}`
+          );
+
+          console.log(
+            `🆔 Config ID: ${config._id}`
+          );
+
+          console.log(
+            `📌 Type: ${config.type}`
+          );
+
+          /**
+           * ==================================================
+           * CONFIG VALUE LOGGING
+           * ==================================================
+           */
+
+          if (
+            config.type ===
+            "BEFORE_EXPIRY"
+          ) {
+            console.log(
+              `📅 Days before expiry: ${config.daysBeforeExpiry}`
+            );
+          }
+
+          if (
+            config.type ===
+            "AFTER_EXPIRY"
+          ) {
+            console.log(
+              `📅 Days after expiry: ${config.daysAfterExpiry}`
+            );
+          }
+
+          if (
+            config.type ===
+            "LAST_N_DAYS"
+          ) {
+            console.log(
+              `📅 Last N days: ${config.lastNDays}`
+            );
+          }
+
+          /**
+           * ==================================================
+           * CALCULATE SCHEDULE
+           * ==================================================
+           */
+
+          const scheduledDate =
+            getScheduledDateForConfig(
+              policy,
+              config,
+              today
+            );
+
+          /**
+           * ==================================================
+           * NOT DUE TODAY
+           * ==================================================
+           */
+
+          if (
+            !scheduledDate
+          ) {
+            console.log(
+              "⏭️ Reminder not due today."
+            );
+
+            continue;
+          }
+
+          /**
+           * ==================================================
+           * REMINDER IS DUE
+           * ==================================================
+           */
+
+          console.log(
+            "📧 Reminder due"
+          );
+
+          console.log(
+            `   Policy: ${policy.policyNumber}`
+          );
+
+          console.log(
+            `   Customer: ${policy.customerName}`
+          );
+
+          console.log(
+            `   Config: ${config.name}`
+          );
+
+          console.log(
+            `   Type: ${config.type}`
+          );
+
+          console.log(
+            `   Schedule Value: ${getScheduleValue(
+              config
+            )}`
+          );
+
+          console.log(
+            `   Scheduled: ${getDateKey(
+              scheduledDate
+            )}`
+          );
+
+          console.log(
+            `   Expiry: ${getDateKey(
+              expiryDate
+            )}`
+          );
+
+          /**
+           * ==================================================
+           * PROCESS NOTIFICATION
+           * ==================================================
+           */
 
           await processNotification(
             policy,
-            config
+            config,
+            scheduledDate
           );
         }
       }
 
+      /**
+       * ======================================================
+       * COMPLETED
+       * ======================================================
+       */
+
       console.log(
         "========================================"
       );
 
       console.log(
-        "✅📧 Policy expiry email job completed"
+        "✅📧 Dynamic policy expiry email job completed"
       );
 
       console.log(
         "========================================"
       );
-    } catch (error) {
+    } catch (
+      error
+    ) {
       console.error(
-        "❌ Policy expiry email job failed:",
+        "========================================"
+      );
+
+      console.error(
+        "❌ Policy expiry email job failed:"
+      );
+
+      console.error(
         error
+      );
+
+      console.error(
+        "========================================"
       );
 
       throw error;
     }
   };
-

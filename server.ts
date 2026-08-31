@@ -25,6 +25,7 @@ import excelTemplatesRoutes from "./routes/excelTemplatesRoutes";
 import jobRoutes from "./routes/jobRoutes";
 import jobApplicationRoutes from "./routes/jobApplicationRoutes";
 import policyRoutes from "./routes/policyInfoRoutes";
+import policyNotificationConfigRoutes from "./routes/policyNotificationConfigRoutes";
 import cookieParser from "cookie-parser";
 
 import { startPolicyExpiryCron } from "./cron/policyExpiryCron";
@@ -91,6 +92,10 @@ app.use("/api/excel", excelTemplatesRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/job-applications", jobApplicationRoutes);
 app.use("/api/policies", policyRoutes);
+app.use(
+  "/api/policy-notification-configs",
+  policyNotificationConfigRoutes
+);
 
 // const PORT = process.env.PORT || 5009;
 // app.listen(PORT, () => console.log(`🚀 Server running on http://0.0.0.0:${PORT}`));
