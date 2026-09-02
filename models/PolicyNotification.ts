@@ -381,10 +381,11 @@ const policyNotificationSchema =
        *
        * ON_EXPIRY -> undefined
        */
-      scheduleValue: {
-        type: Number,
-        min: 1,
-      },
+scheduleValue: {
+  type: Number,
+  min: 1,
+  required: false,
+},
 
       /**
        * ========================================
