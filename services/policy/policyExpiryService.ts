@@ -606,36 +606,57 @@ const getScheduledDateForConfig = (
  * LAST_N_DAYS + 8
  */
 
+// const getScheduleValue = (
+//   config: NotificationConfig
+// ): number => {
+//   switch (config.type) {
+//     case "BEFORE_EXPIRY":
+//       return (
+//         config.daysBeforeExpiry ??
+//         0
+//       );
+
+//     case "AFTER_EXPIRY":
+//       return (
+//         config.daysAfterExpiry ??
+//         0
+//       );
+
+//     case "LAST_N_DAYS":
+//       return (
+//         config.lastNDays ??
+//         0
+//       );
+
+//     case "ON_EXPIRY":
+//       return 0;
+
+//     default:
+//       return 0;
+//   }
+// };
+
+
 const getScheduleValue = (
   config: NotificationConfig
-): number => {
+): number | undefined => {
   switch (config.type) {
     case "BEFORE_EXPIRY":
-      return (
-        config.daysBeforeExpiry ??
-        0
-      );
+      return config.daysBeforeExpiry;
 
     case "AFTER_EXPIRY":
-      return (
-        config.daysAfterExpiry ??
-        0
-      );
+      return config.daysAfterExpiry;
 
     case "LAST_N_DAYS":
-      return (
-        config.lastNDays ??
-        0
-      );
+      return config.lastNDays;
 
     case "ON_EXPIRY":
-      return 0;
+      return undefined;
 
     default:
-      return 0;
+      return undefined;
   }
 };
-
 /**
  * ============================================================
  * GET NOTIFICATION QUERY
@@ -651,28 +672,51 @@ const getScheduleValue = (
  * This prevents mismatches.
  */
 
+// const buildNotificationQuery = (
+//   policy: any,
+//   config: NotificationConfig,
+//   expiryDate: Date,
+//   scheduledDate: Date,
+//   scheduleValue?: number
+// ) => {
+//   return {
+//     policyId: policy._id,
+
+//     reminderConfigId:
+//       config._id,
+
+//     expiryDate,
+
+//     scheduleType:
+//       config.type,
+
+//     scheduleValue,
+
+//     scheduledDate,
+//   };
+// };
+
+
 const buildNotificationQuery = (
   policy: any,
   config: NotificationConfig,
   expiryDate: Date,
   scheduledDate: Date,
-  scheduleValue: number
+  scheduleValue?: number
 ) => {
-  return {
+  const query: any = {
     policyId: policy._id,
-
-    reminderConfigId:
-      config._id,
-
+    reminderConfigId: config._id,
     expiryDate,
-
-    scheduleType:
-      config.type,
-
-    scheduleValue,
-
+    scheduleType: config.type,
     scheduledDate,
   };
+
+  if (scheduleValue !== undefined) {
+    query.scheduleValue = scheduleValue;
+  }
+
+  return query;
 };
 
 /**

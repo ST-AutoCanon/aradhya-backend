@@ -2,7 +2,6 @@ import Policy, { IPolicy } from "../../models/policyInfo";
 
 interface CreatePolicyData {
   month: string;
-  slNo: number;
   customerName: string;
   contact: string;
   reference?: string;

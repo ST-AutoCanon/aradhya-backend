@@ -64,17 +64,145 @@ const parseNumber = (value: any, fieldName: string): number => {
   return parsed;
 };
 
+// const parseDate = (value: any, fieldName: string): Date => {
+//   // Excel Date object
+//   if (value instanceof Date) {
+//     if (!Number.isNaN(value.getTime())) {
+//       return value;
+//     }
+
+//     throw new Error(`${fieldName} must be a valid date`);
+//   }
+
+//   // Excel serial number
+//   if (typeof value === "number") {
+//     const excelDate = XLSX.SSF.parse_date_code(value);
+
+//     if (!excelDate) {
+//       throw new Error(`${fieldName} must be a valid date`);
+//     }
+
+//     return new Date(
+//       excelDate.y,
+//       excelDate.m - 1,
+//       excelDate.d,
+//       excelDate.H || 0,
+//       excelDate.M || 0,
+//       excelDate.S || 0
+//     );
+//   }
+
+//   if (typeof value === "string") {
+//     const trimmedValue = value.trim();
+
+//     if (!trimmedValue) {
+//       throw new Error(`${fieldName} must be a valid date`);
+//     }
+
+//     // YYYY-MM-DD
+//     const yyyyMmDdMatch = trimmedValue.match(
+//       /^(\d{4})-(\d{2})-(\d{2})$/
+//     );
+
+//     if (yyyyMmDdMatch) {
+//       const [, year, month, day] = yyyyMmDdMatch;
+
+//       const date = new Date(
+//         Number(year),
+//         Number(month) - 1,
+//         Number(day)
+//       );
+
+//       if (
+//         date.getFullYear() === Number(year) &&
+//         date.getMonth() === Number(month) - 1 &&
+//         date.getDate() === Number(day)
+//       ) {
+//         return date;
+//       }
+//     }
+
+//     // DD/MM/YYYY
+//     const ddMmYyyyMatch = trimmedValue.match(
+//       /^(\d{2})\/(\d{2})\/(\d{4})$/
+//     );
+
+//     if (ddMmYyyyMatch) {
+//       const [, day, month, year] = ddMmYyyyMatch;
+
+//       const date = new Date(
+//         Number(year),
+//         Number(month) - 1,
+//         Number(day)
+//       );
+
+//       if (
+//         date.getFullYear() === Number(year) &&
+//         date.getMonth() === Number(month) - 1 &&
+//         date.getDate() === Number(day)
+//       ) {
+//         return date;
+//       }
+//     }
+
+//     // MM/DD/YYYY
+//     const mmDdYyyyMatch = trimmedValue.match(
+//       /^(\d{2})\/(\d{2})\/(\d{4})$/
+//     );
+
+//     if (mmDdYyyyMatch) {
+//       const [, month, day, year] = mmDdYyyyMatch;
+
+//       const date = new Date(
+//         Number(year),
+//         Number(month) - 1,
+//         Number(day)
+//       );
+
+//       if (
+//         date.getFullYear() === Number(year) &&
+//         date.getMonth() === Number(month) - 1 &&
+//         date.getDate() === Number(day)
+//       ) {
+//         return date;
+//       }
+//     }
+
+//     // Last fallback
+//     const date = new Date(trimmedValue);
+
+//     if (!Number.isNaN(date.getTime())) {
+//       return date;
+//     }
+//   }
+
+//   throw new Error(`${fieldName} must be a valid date`);
+// };
+
+
 const parseDate = (value: any, fieldName: string): Date => {
-  // Excel Date object
+  // -----------------------------------------
+  // 1. Excel / JavaScript Date object
+  // -----------------------------------------
   if (value instanceof Date) {
-    if (!Number.isNaN(value.getTime())) {
-      return value;
+    if (Number.isNaN(value.getTime())) {
+      throw new Error(`${fieldName} must be a valid date`);
     }
 
-    throw new Error(`${fieldName} must be a valid date`);
+    // Remove timezone/time component.
+    // Store date-only value at UTC midnight.
+    return new Date(
+      Date.UTC(
+        value.getFullYear(),
+        value.getMonth(),
+        value.getDate()
+      )
+    );
   }
 
-  // Excel serial number
+  // -----------------------------------------
+  // 2. Excel serial number
+  // -----------------------------------------
   if (typeof value === "number") {
     const excelDate = XLSX.SSF.parse_date_code(value);
 
@@ -83,15 +211,17 @@ const parseDate = (value: any, fieldName: string): Date => {
     }
 
     return new Date(
-      excelDate.y,
-      excelDate.m - 1,
-      excelDate.d,
-      excelDate.H || 0,
-      excelDate.M || 0,
-      excelDate.S || 0
+      Date.UTC(
+        excelDate.y,
+        excelDate.m - 1,
+        excelDate.d
+      )
     );
   }
 
+  // -----------------------------------------
+  // 3. String
+  // -----------------------------------------
   if (typeof value === "string") {
     const trimmedValue = value.trim();
 
@@ -99,84 +229,93 @@ const parseDate = (value: any, fieldName: string): Date => {
       throw new Error(`${fieldName} must be a valid date`);
     }
 
-    // YYYY-MM-DD
-    const yyyyMmDdMatch = trimmedValue.match(
-      /^(\d{4})-(\d{2})-(\d{2})$/
-    );
-
-    if (yyyyMmDdMatch) {
-      const [, year, month, day] = yyyyMmDdMatch;
-
-      const date = new Date(
-        Number(year),
-        Number(month) - 1,
-        Number(day)
-      );
-
-      if (
-        date.getFullYear() === Number(year) &&
-        date.getMonth() === Number(month) - 1 &&
-        date.getDate() === Number(day)
-      ) {
-        return date;
-      }
-    }
-
+    // -----------------------------------------
     // DD/MM/YYYY
-    const ddMmYyyyMatch = trimmedValue.match(
-      /^(\d{2})\/(\d{2})\/(\d{4})$/
+    // Example: 28/03/2027
+    // Also accepts: 28/3/2027
+    // -----------------------------------------
+    let match = trimmedValue.match(
+      /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
     );
 
-    if (ddMmYyyyMatch) {
-      const [, day, month, year] = ddMmYyyyMatch;
+    if (match) {
+      const [, day, month, year] = match;
 
       const date = new Date(
-        Number(year),
-        Number(month) - 1,
-        Number(day)
+        Date.UTC(
+          Number(year),
+          Number(month) - 1,
+          Number(day)
+        )
       );
 
       if (
-        date.getFullYear() === Number(year) &&
-        date.getMonth() === Number(month) - 1 &&
-        date.getDate() === Number(day)
+        date.getUTCFullYear() === Number(year) &&
+        date.getUTCMonth() === Number(month) - 1 &&
+        date.getUTCDate() === Number(day)
       ) {
         return date;
       }
+
+      throw new Error(
+        `${fieldName} must be a valid date`
+      );
     }
 
-    // MM/DD/YYYY
-    const mmDdYyyyMatch = trimmedValue.match(
-      /^(\d{2})\/(\d{2})\/(\d{4})$/
+    // -----------------------------------------
+    // DD/MM/YYYY HH:mm:ss AM/PM
+    // Example:
+    // 28/3/2027 12:00:10 AM
+    // -----------------------------------------
+    match = trimmedValue.match(
+      /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+\d{1,2}:\d{2}:\d{2}\s*(AM|PM)$/i
     );
 
-    if (mmDdYyyyMatch) {
-      const [, month, day, year] = mmDdYyyyMatch;
+    if (match) {
+      const [, day, month, year] = match;
 
       const date = new Date(
-        Number(year),
-        Number(month) - 1,
-        Number(day)
+        Date.UTC(
+          Number(year),
+          Number(month) - 1,
+          Number(day)
+        )
       );
 
       if (
-        date.getFullYear() === Number(year) &&
-        date.getMonth() === Number(month) - 1 &&
-        date.getDate() === Number(day)
+        date.getUTCFullYear() === Number(year) &&
+        date.getUTCMonth() === Number(month) - 1 &&
+        date.getUTCDate() === Number(day)
       ) {
         return date;
       }
+
+      throw new Error(
+        `${fieldName} must be a valid date`
+      );
     }
 
-    // Last fallback
-    const date = new Date(trimmedValue);
+    // -----------------------------------------
+    // ISO date
+    // Example:
+    // 2026-07-31T18:29:59.999Z
+    // -----------------------------------------
+    const isoDate = new Date(trimmedValue);
 
-    if (!Number.isNaN(date.getTime())) {
-      return date;
+    if (!Number.isNaN(isoDate.getTime())) {
+      return new Date(
+        Date.UTC(
+          isoDate.getUTCFullYear(),
+          isoDate.getUTCMonth(),
+          isoDate.getUTCDate()
+        )
+      );
     }
   }
 
-  throw new Error(`${fieldName} must be a valid date`);
+  throw new Error(
+    `${fieldName} must be in DD/MM/YYYY format`
+  );
 };
 
 const validateRow = (row: any, rowNumber: number) => {
