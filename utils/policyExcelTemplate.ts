@@ -31,7 +31,7 @@ export const generatePolicyExcelTemplate = (): Buffer => {
   const exampleRow = [
     "August",
     1,
-    "Rahul Kumar",
+    "Rahul example",
     "rahul@gmail.com",
     "9876543210",
     "ABC Reference",

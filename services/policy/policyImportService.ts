@@ -318,6 +318,20 @@ const parseDate = (value: any, fieldName: string): Date => {
   );
 };
 
+const DUMMY_CUSTOMER_NAMES = [
+  "rahul example",
+  "test",
+  "dummy",
+];
+
+const isDummyRow = (row: any): boolean => {
+  const customerName = String(row?.customerName ?? "")
+    .trim()
+    .toLowerCase();
+
+  return DUMMY_CUSTOMER_NAMES.includes(customerName);
+};
+
 const validateRow = (row: any, rowNumber: number) => {
   // Check required fields
   for (const field of requiredFields) {
@@ -477,55 +491,61 @@ export const importPoliciesFromExcel = async (
      *
      * Excel row starts from 2 because row 1 contains headers.
      */
-    for (let index = 0; index < rows.length; index++) {
-      const rowNumber = index + 2;
-      const row = rows[index] as any;
+for (let index = 0; index < rows.length; index++) {
+  const rowNumber = index + 2;
+  const row = rows[index] as any;
 
-      try {
-        const policyData = validateRow(row, rowNumber);
+  // Skip dummy/template rows
+  if (isDummyRow(row)) {
+    console.log(
+      `Skipping dummy/template row ${rowNumber}: ${String(
+        row.customerName
+      ).trim()}`
+    );
 
-        /*
-         * Check duplicate policy number.
-         */
-        const existingPolicy = await Policy.findOne({
-          policyNumber: policyData.policyNumber,
-        });
+    continue;
+  }
 
-        if (existingPolicy) {
-          throw new Error(
-            `Policy number already exists: ${policyData.policyNumber}`
-          );
-        }
+  try {
+    const policyData = validateRow(row, rowNumber);
 
-        /*
-         * Check duplicate policy number
-         * inside the same Excel file.
-         */
-        const duplicateInCurrentFile = importedPolicies.find(
-          (policy) =>
-            policy.policyNumber === policyData.policyNumber
-        );
+    // Check duplicate policy number
+    const existingPolicy = await Policy.findOne({
+      policyNumber: policyData.policyNumber,
+    });
 
-        if (duplicateInCurrentFile) {
-          throw new Error(
-            `Duplicate policy number in Excel file: ${policyData.policyNumber}`
-          );
-        }
-
-        const createdPolicy = await Policy.create(policyData);
-
-        importedPolicies.push(createdPolicy);
-      } catch (error) {
-        failedRows.push({
-          row: rowNumber,
-          data: row,
-          error:
-            error instanceof Error
-              ? error.message
-              : "Unknown error",
-        });
-      }
+    if (existingPolicy) {
+      throw new Error(
+        `Policy number already exists: ${policyData.policyNumber}`
+      );
     }
+
+    // Check duplicate policy number inside the same Excel file
+    const duplicateInCurrentFile = importedPolicies.find(
+      (policy) =>
+        policy.policyNumber === policyData.policyNumber
+    );
+
+    if (duplicateInCurrentFile) {
+      throw new Error(
+        `Duplicate policy number in Excel file: ${policyData.policyNumber}`
+      );
+    }
+
+    const createdPolicy = await Policy.create(policyData);
+
+    importedPolicies.push(createdPolicy);
+  } catch (error) {
+    failedRows.push({
+      row: rowNumber,
+      data: row,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unknown error",
+    });
+  }
+}
 
     return {
       successCount: importedPolicies.length,
