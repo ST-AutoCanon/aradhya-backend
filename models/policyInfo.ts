@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { Document, Schema, Types } from "mongoose";
 
 export interface IPolicy extends Document {
   month: string;
@@ -38,6 +38,7 @@ export interface IPolicy extends Document {
   isActive: boolean;
 
 
+    notificationCycleId: Types.ObjectId;
 
   createdAt: Date;
   updatedAt: Date;
@@ -177,9 +178,45 @@ const policySchema = new Schema<IPolicy>(
       type: Boolean,
       default: true,
     },
+     /**
+       * ========================================================
+       * NOTIFICATION CYCLE ID
+       * ========================================================
+       *
+       * IMPORTANT:
+       *
+       * Every policy gets one notification cycle.
+       *
+       * When you update/renew a policy and want all
+       * expiry reminders to start again, create a NEW
+       * notificationCycleId.
+       *
+       * Example:
+       *
+       * Old:
+       * 65f111111111111111111111
+       *
+       * New:
+       * 65f222222222222222222222
+       *
+       * Because PolicyNotification uses this ID in its
+       * unique index, the old SENT notification cannot
+       * block the new reminder cycle.
+       */
 
+      notificationCycleId: {
+        type: Schema.Types.ObjectId,
 
+        default: () =>
+          new Types.ObjectId(),
+
+        required: true,
+
+        index: true,
+      },
+    
   },
+
   {
     timestamps: true,
   }
