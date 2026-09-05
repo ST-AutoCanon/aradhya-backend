@@ -1,7 +1,503 @@
 
+// import PolicyNotificationConfig, {
+//   IPolicyNotificationConfig,
+//   PolicyNotificationScheduleType,
+// } from "../../models/PolicyNotificationConfig";
+
+// /**
+//  * ================================
+//  * CREATE CONFIG
+//  * ================================
+//  */
+// export interface CreateNotificationConfigInput {
+//   name: string;
+
+//   type: PolicyNotificationScheduleType;
+
+//   daysBeforeExpiry?: number;
+
+//   daysAfterExpiry?: number;
+
+//   lastNDays?: number;
+
+//   subject: string;
+
+//   enabled?: boolean;
+// }
+
+// /**
+//  * ================================
+//  * UPDATE CONFIG
+//  * ================================
+//  */
+// export interface UpdateNotificationConfigInput {
+//   name?: string;
+
+//   type?: PolicyNotificationScheduleType;
+
+//   daysBeforeExpiry?: number;
+
+//   daysAfterExpiry?: number;
+
+//   lastNDays?: number;
+
+//   subject?: string;
+
+//   enabled?: boolean;
+// }
+
+// /**
+//  * ================================
+//  * VALIDATE CONFIG
+//  * ================================
+//  *
+//  * Validates the configuration before
+//  * saving it to MongoDB.
+//  */
+// const validateConfigInput = (
+//   data:
+//     | CreateNotificationConfigInput
+//     | UpdateNotificationConfigInput,
+//   isCreate = false
+// ): void => {
+//   /**
+//    * NAME
+//    */
+//   if (
+//     isCreate &&
+//     (!data.name ||
+//       !data.name.trim())
+//   ) {
+//     throw new Error(
+//       "Reminder name is required."
+//     );
+//   }
+
+//   if (
+//     data.name !== undefined &&
+//     !data.name.trim()
+//   ) {
+//     throw new Error(
+//       "Reminder name cannot be empty."
+//     );
+//   }
+
+//   /**
+//    * SUBJECT
+//    */
+//   if (
+//     isCreate &&
+//     (!data.subject ||
+//       !data.subject.trim())
+//   ) {
+//     throw new Error(
+//       "Email subject is required."
+//     );
+//   }
+
+//   if (
+//     data.subject !== undefined &&
+//     !data.subject.trim()
+//   ) {
+//     throw new Error(
+//       "Email subject cannot be empty."
+//     );
+//   }
+
+//   /**
+//    * TYPE
+//    */
+//   const validTypes: PolicyNotificationScheduleType[] =
+//     [
+//       "BEFORE_EXPIRY",
+//       "ON_EXPIRY",
+//       "AFTER_EXPIRY",
+//       "LAST_N_DAYS",
+//     ];
+
+//   if (
+//     data.type !== undefined &&
+//     !validTypes.includes(
+//       data.type
+//     )
+//   ) {
+//     throw new Error(
+//       `Invalid reminder type. Allowed types: ${validTypes.join(
+//         ", "
+//       )}`
+//     );
+//   }
+
+//   /**
+//    * ================================
+//    * BEFORE EXPIRY
+//    * ================================
+//    */
+//   if (
+//     data.type ===
+//     "BEFORE_EXPIRY"
+//   ) {
+//     if (
+//       data.daysBeforeExpiry ===
+//         undefined ||
+//       data.daysBeforeExpiry ===
+//         null ||
+//       data.daysBeforeExpiry < 1 ||
+//       !Number.isInteger(
+//         data.daysBeforeExpiry
+//       )
+//     ) {
+//       throw new Error(
+//         "daysBeforeExpiry must be a positive integer for BEFORE_EXPIRY."
+//       );
+//     }
+//   }
+
+//   /**
+//    * ================================
+//    * AFTER EXPIRY
+//    * ================================
+//    */
+//   if (
+//     data.type ===
+//     "AFTER_EXPIRY"
+//   ) {
+//     if (
+//       data.daysAfterExpiry ===
+//         undefined ||
+//       data.daysAfterExpiry ===
+//         null ||
+//       data.daysAfterExpiry < 1 ||
+//       !Number.isInteger(
+//         data.daysAfterExpiry
+//       )
+//     ) {
+//       throw new Error(
+//         "daysAfterExpiry must be a positive integer for AFTER_EXPIRY."
+//       );
+//     }
+//   }
+
+//   /**
+//    * ================================
+//    * LAST N DAYS
+//    * ================================
+//    */
+//   if (
+//     data.type ===
+//     "LAST_N_DAYS"
+//   ) {
+//     if (
+//       data.lastNDays ===
+//         undefined ||
+//       data.lastNDays ===
+//         null ||
+//       data.lastNDays < 1 ||
+//       !Number.isInteger(
+//         data.lastNDays
+//       )
+//     ) {
+//       throw new Error(
+//         "lastNDays must be a positive integer for LAST_N_DAYS."
+//       );
+//     }
+//   }
+// };
+
+// /**
+//  * ================================
+//  * CREATE
+//  * ================================
+//  */
+// export const createNotificationConfig =
+//   async (
+//     data: CreateNotificationConfigInput
+//   ): Promise<IPolicyNotificationConfig> => {
+//     validateConfigInput(
+//       data,
+//       true
+//     );
+
+//     const config =
+//       await PolicyNotificationConfig.create(
+//         {
+//           name: data.name.trim(),
+
+//           type: data.type,
+
+//           daysBeforeExpiry:
+//             data.type ===
+//             "BEFORE_EXPIRY"
+//               ? data.daysBeforeExpiry
+//               : undefined,
+
+//           daysAfterExpiry:
+//             data.type ===
+//             "AFTER_EXPIRY"
+//               ? data.daysAfterExpiry
+//               : undefined,
+
+//           lastNDays:
+//             data.type ===
+//             "LAST_N_DAYS"
+//               ? data.lastNDays
+//               : undefined,
+
+//           subject:
+//             data.subject.trim(),
+
+//           enabled:
+//             data.enabled !==
+//             undefined
+//               ? data.enabled
+//               : true,
+//         }
+//       );
+
+//     return config;
+//   };
+
+// /**
+//  * ================================
+//  * GET ALL
+//  * ================================
+//  */
+// export const getNotificationConfigs =
+//   async (): Promise<
+//     IPolicyNotificationConfig[]
+//   > => {
+//     return PolicyNotificationConfig.find()
+//       .sort({
+//         createdAt: -1,
+//       })
+//       .lean();
+//   };
+
+// /**
+//  * ================================
+//  * GET ACTIVE
+//  * ================================
+//  */
+// export const getActiveNotificationConfigs =
+//   async (): Promise<
+//     IPolicyNotificationConfig[]
+//   > => {
+//     return PolicyNotificationConfig.find(
+//       {
+//         enabled: true,
+//       }
+//     )
+//       .sort({
+//         createdAt: -1,
+//       })
+//       .lean();
+//   };
+
+// /**
+//  * ================================
+//  * GET BY ID
+//  * ================================
+//  */
+// export const getNotificationConfigById =
+//   async (
+//     id: string
+//   ): Promise<IPolicyNotificationConfig> => {
+//     const config =
+//       await PolicyNotificationConfig.findById(
+//         id
+//       );
+
+//     if (!config) {
+//       throw new Error(
+//         "Notification configuration not found."
+//       );
+//     }
+
+//     return config;
+//   };
+
+// /**
+//  * ================================
+//  * UPDATE
+//  * ================================
+//  */
+// export const updateNotificationConfig =
+//   async (
+//     id: string,
+//     data: UpdateNotificationConfigInput
+//   ): Promise<IPolicyNotificationConfig> => {
+//     /**
+//      * First get existing config.
+//      */
+//     const existing =
+//       await PolicyNotificationConfig.findById(
+//         id
+//       );
+
+//     if (!existing) {
+//       throw new Error(
+//         "Notification configuration not found."
+//       );
+//     }
+
+//     /**
+//      * Determine final values after
+//      * applying the update.
+//      */
+//     const finalType =
+//       data.type !== undefined
+//         ? data.type
+//         : existing.type;
+
+//     const finalName =
+//       data.name !== undefined
+//         ? data.name
+//         : existing.name;
+
+//     const finalSubject =
+//       data.subject !== undefined
+//         ? data.subject
+//         : existing.subject;
+
+//     const finalDaysBefore =
+//       data.daysBeforeExpiry !==
+//       undefined
+//         ? data.daysBeforeExpiry
+//         : existing.daysBeforeExpiry;
+
+//     const finalDaysAfter =
+//       data.daysAfterExpiry !==
+//       undefined
+//         ? data.daysAfterExpiry
+//         : existing.daysAfterExpiry;
+
+//     const finalLastNDays =
+//       data.lastNDays !==
+//       undefined
+//         ? data.lastNDays
+//         : existing.lastNDays;
+
+//     /**
+//      * Validate final configuration.
+//      */
+//     validateConfigInput(
+//       {
+//         name: finalName,
+//         type: finalType,
+//         daysBeforeExpiry:
+//           finalDaysBefore,
+//         daysAfterExpiry:
+//           finalDaysAfter,
+//         lastNDays:
+//           finalLastNDays,
+//         subject: finalSubject,
+//       },
+//       true
+//     );
+
+//     /**
+//      * Update.
+//      */
+//     existing.name =
+//       finalName.trim();
+
+//     existing.type =
+//       finalType;
+
+//     existing.subject =
+//       finalSubject.trim();
+
+//     existing.enabled =
+//       data.enabled !==
+//       undefined
+//         ? data.enabled
+//         : existing.enabled;
+
+//     /**
+//      * Clear irrelevant fields.
+//      */
+//     existing.daysBeforeExpiry =
+//       finalType ===
+//       "BEFORE_EXPIRY"
+//         ? finalDaysBefore
+//         : undefined;
+
+//     existing.daysAfterExpiry =
+//       finalType ===
+//       "AFTER_EXPIRY"
+//         ? finalDaysAfter
+//         : undefined;
+
+//     existing.lastNDays =
+//       finalType ===
+//       "LAST_N_DAYS"
+//         ? finalLastNDays
+//         : undefined;
+
+//     await existing.save();
+
+//     return existing;
+//   };
+
+// /**
+//  * ================================
+//  * DELETE
+//  * ================================
+//  */
+// export const deleteNotificationConfig =
+//   async (
+//     id: string
+//   ): Promise<void> => {
+//     const result =
+//       await PolicyNotificationConfig.findByIdAndDelete(
+//         id
+//       );
+
+//     if (!result) {
+//       throw new Error(
+//         "Notification configuration not found."
+//       );
+//     }
+//   };
+
+// /**
+//  * ================================
+//  * ENABLE / DISABLE
+//  * ================================
+//  */
+// export const toggleNotificationConfig =
+//   async (
+//     id: string,
+//     enabled: boolean
+//   ): Promise<IPolicyNotificationConfig> => {
+//     const config =
+//       await PolicyNotificationConfig.findByIdAndUpdate(
+//         id,
+//         {
+//           enabled,
+//         },
+//         {
+//           new: true,
+//           runValidators: true,
+//         }
+//       );
+
+//     if (!config) {
+//       throw new Error(
+//         "Notification configuration not found."
+//       );
+//     }
+
+//     return config;
+//   };
+
+
+
 import PolicyNotificationConfig, {
   IPolicyNotificationConfig,
   PolicyNotificationScheduleType,
+  PolicyNotificationRecurringFrequency,
+  PolicyNotificationDayOfWeek,
 } from "../../models/PolicyNotificationConfig";
 
 /**
@@ -19,6 +515,14 @@ export interface CreateNotificationConfigInput {
   daysAfterExpiry?: number;
 
   lastNDays?: number;
+
+  recurringFrequency?: PolicyNotificationRecurringFrequency;
+
+  recurringDayOfWeek?: PolicyNotificationDayOfWeek;
+
+  recurringDayOfMonth?: number;
+
+  recurringMonth?: number;
 
   subject: string;
 
@@ -41,6 +545,14 @@ export interface UpdateNotificationConfigInput {
 
   lastNDays?: number;
 
+  recurringFrequency?: PolicyNotificationRecurringFrequency;
+
+  recurringDayOfWeek?: PolicyNotificationDayOfWeek;
+
+  recurringDayOfMonth?: number;
+
+  recurringMonth?: number;
+
   subject?: string;
 
   enabled?: boolean;
@@ -61,7 +573,9 @@ const validateConfigInput = (
   isCreate = false
 ): void => {
   /**
+   * ================================
    * NAME
+   * ================================
    */
   if (
     isCreate &&
@@ -83,7 +597,9 @@ const validateConfigInput = (
   }
 
   /**
+   * ================================
    * SUBJECT
+   * ================================
    */
   if (
     isCreate &&
@@ -105,7 +621,9 @@ const validateConfigInput = (
   }
 
   /**
+   * ================================
    * TYPE
+   * ================================
    */
   const validTypes: PolicyNotificationScheduleType[] =
     [
@@ -113,6 +631,7 @@ const validateConfigInput = (
       "ON_EXPIRY",
       "AFTER_EXPIRY",
       "LAST_N_DAYS",
+      "RECURRING",
     ];
 
   if (
@@ -202,6 +721,132 @@ const validateConfigInput = (
       );
     }
   }
+
+  /**
+   * ================================
+   * RECURRING
+   * ================================
+   */
+  if (
+    data.type ===
+    "RECURRING"
+  ) {
+    /**
+     * Recurring frequency
+     */
+    const validRecurringFrequencies: PolicyNotificationRecurringFrequency[] =
+      [
+        "WEEKLY",
+        "MONTHLY",
+        "YEARLY",
+      ];
+
+    if (
+      data.recurringFrequency ===
+        undefined ||
+      !validRecurringFrequencies.includes(
+        data.recurringFrequency
+      )
+    ) {
+      throw new Error(
+        "Recurring frequency must be WEEKLY, MONTHLY, or YEARLY."
+      );
+    }
+
+    /**
+     * ================================
+     * WEEKLY
+     * ================================
+     */
+    if (
+      data.recurringFrequency ===
+      "WEEKLY"
+    ) {
+      if (
+        data.recurringDayOfWeek ===
+          undefined ||
+        data.recurringDayOfWeek ===
+          null ||
+        !Number.isInteger(
+          data.recurringDayOfWeek
+        ) ||
+        data.recurringDayOfWeek < 0 ||
+        data.recurringDayOfWeek > 6
+      ) {
+        throw new Error(
+          "recurringDayOfWeek must be an integer between 0 and 6 for WEEKLY recurring notifications."
+        );
+      }
+    }
+
+    /**
+     * ================================
+     * MONTHLY
+     * ================================
+     */
+    if (
+      data.recurringFrequency ===
+      "MONTHLY"
+    ) {
+      if (
+        data.recurringDayOfMonth ===
+          undefined ||
+        data.recurringDayOfMonth ===
+          null ||
+        !Number.isInteger(
+          data.recurringDayOfMonth
+        ) ||
+        data.recurringDayOfMonth < 1 ||
+        data.recurringDayOfMonth > 31
+      ) {
+        throw new Error(
+          "recurringDayOfMonth must be an integer between 1 and 31 for MONTHLY recurring notifications."
+        );
+      }
+    }
+
+    /**
+     * ================================
+     * YEARLY
+     * ================================
+     */
+    if (
+      data.recurringFrequency ===
+      "YEARLY"
+    ) {
+      if (
+        data.recurringMonth ===
+          undefined ||
+        data.recurringMonth ===
+          null ||
+        !Number.isInteger(
+          data.recurringMonth
+        ) ||
+        data.recurringMonth < 1 ||
+        data.recurringMonth > 12
+      ) {
+        throw new Error(
+          "recurringMonth must be an integer between 1 and 12 for YEARLY recurring notifications."
+        );
+      }
+
+      if (
+        data.recurringDayOfMonth ===
+          undefined ||
+        data.recurringDayOfMonth ===
+          null ||
+        !Number.isInteger(
+          data.recurringDayOfMonth
+        ) ||
+        data.recurringDayOfMonth < 1 ||
+        data.recurringDayOfMonth > 31
+      ) {
+        throw new Error(
+          "recurringDayOfMonth must be an integer between 1 and 31 for YEARLY recurring notifications."
+        );
+      }
+    }
+  }
 };
 
 /**
@@ -225,6 +870,9 @@ export const createNotificationConfig =
 
           type: data.type,
 
+          /**
+           * Expiry-based settings
+           */
           daysBeforeExpiry:
             data.type ===
             "BEFORE_EXPIRY"
@@ -241,6 +889,43 @@ export const createNotificationConfig =
             data.type ===
             "LAST_N_DAYS"
               ? data.lastNDays
+              : undefined,
+
+          /**
+           * Recurring settings
+           */
+          recurringFrequency:
+            data.type ===
+            "RECURRING"
+              ? data.recurringFrequency
+              : undefined,
+
+          recurringDayOfWeek:
+            data.type ===
+              "RECURRING" &&
+            data.recurringFrequency ===
+              "WEEKLY"
+              ? data.recurringDayOfWeek
+              : undefined,
+
+          recurringDayOfMonth:
+            data.type ===
+              "RECURRING" &&
+            (
+              data.recurringFrequency ===
+                "MONTHLY" ||
+              data.recurringFrequency ===
+                "YEARLY"
+            )
+              ? data.recurringDayOfMonth
+              : undefined,
+
+          recurringMonth:
+            data.type ===
+              "RECURRING" &&
+            data.recurringFrequency ===
+              "YEARLY"
+              ? data.recurringMonth
               : undefined,
 
           subject:
@@ -327,12 +1012,12 @@ export const updateNotificationConfig =
     data: UpdateNotificationConfigInput
   ): Promise<IPolicyNotificationConfig> => {
     /**
-     * First get existing config.
+     * ================================
+     * Get existing configuration
+     * ================================
      */
     const existing =
-      await PolicyNotificationConfig.findById(
-        id
-      );
+      await PolicyNotificationConfig.findById(id);
 
     if (!existing) {
       throw new Error(
@@ -341,13 +1026,16 @@ export const updateNotificationConfig =
     }
 
     /**
-     * Determine final values after
-     * applying the update.
+     * ================================
+     * Determine final values
+     * ================================
+     *
+     * Merge the existing configuration
+     * with the incoming update first.
+     *
+     * This allows us to validate the complete
+     * configuration before saving it.
      */
-    const finalType =
-      data.type !== undefined
-        ? data.type
-        : existing.type;
 
     const finalName =
       data.name !== undefined
@@ -359,81 +1047,166 @@ export const updateNotificationConfig =
         ? data.subject
         : existing.subject;
 
-    const finalDaysBefore =
-      data.daysBeforeExpiry !==
-      undefined
+    const finalType =
+      data.type !== undefined
+        ? data.type
+        : existing.type;
+
+    const finalDaysBeforeExpiry =
+      data.daysBeforeExpiry !== undefined
         ? data.daysBeforeExpiry
         : existing.daysBeforeExpiry;
 
-    const finalDaysAfter =
-      data.daysAfterExpiry !==
-      undefined
+    const finalDaysAfterExpiry =
+      data.daysAfterExpiry !== undefined
         ? data.daysAfterExpiry
         : existing.daysAfterExpiry;
 
     const finalLastNDays =
-      data.lastNDays !==
-      undefined
+      data.lastNDays !== undefined
         ? data.lastNDays
         : existing.lastNDays;
 
+    const finalRecurringFrequency =
+      data.recurringFrequency !== undefined
+        ? data.recurringFrequency
+        : existing.recurringFrequency;
+
+    const finalRecurringDayOfWeek =
+      data.recurringDayOfWeek !== undefined
+        ? data.recurringDayOfWeek
+        : existing.recurringDayOfWeek;
+
+    const finalRecurringDayOfMonth =
+      data.recurringDayOfMonth !== undefined
+        ? data.recurringDayOfMonth
+        : existing.recurringDayOfMonth;
+
+    const finalRecurringMonth =
+      data.recurringMonth !== undefined
+        ? data.recurringMonth
+        : existing.recurringMonth;
+
     /**
-     * Validate final configuration.
+     * ================================
+     * Validate complete configuration
+     * ================================
      */
     validateConfigInput(
       {
         name: finalName,
         type: finalType,
+        subject: finalSubject,
+
         daysBeforeExpiry:
-          finalDaysBefore,
+          finalDaysBeforeExpiry,
+
         daysAfterExpiry:
-          finalDaysAfter,
+          finalDaysAfterExpiry,
+
         lastNDays:
           finalLastNDays,
-        subject: finalSubject,
+
+        recurringFrequency:
+          finalRecurringFrequency,
+
+        recurringDayOfWeek:
+          finalRecurringDayOfWeek,
+
+        recurringDayOfMonth:
+          finalRecurringDayOfMonth,
+
+        recurringMonth:
+          finalRecurringMonth,
       },
       true
     );
 
     /**
-     * Update.
+     * ================================
+     * Basic fields
+     * ================================
      */
-    existing.name =
-      finalName.trim();
+    existing.name = finalName.trim();
 
-    existing.type =
-      finalType;
+    existing.subject = finalSubject.trim();
 
-    existing.subject =
-      finalSubject.trim();
+    existing.type = finalType;
 
-    existing.enabled =
-      data.enabled !==
-      undefined
-        ? data.enabled
-        : existing.enabled;
+    if (data.enabled !== undefined) {
+      existing.enabled = data.enabled;
+    }
 
     /**
-     * Clear irrelevant fields.
+     * ================================
+     * Clear expiry-based fields
+     * unless the selected type requires them
+     * ================================
      */
+
     existing.daysBeforeExpiry =
-      finalType ===
-      "BEFORE_EXPIRY"
-        ? finalDaysBefore
+      finalType === "BEFORE_EXPIRY"
+        ? finalDaysBeforeExpiry
         : undefined;
 
     existing.daysAfterExpiry =
-      finalType ===
-      "AFTER_EXPIRY"
-        ? finalDaysAfter
+      finalType === "AFTER_EXPIRY"
+        ? finalDaysAfterExpiry
         : undefined;
 
     existing.lastNDays =
-      finalType ===
-      "LAST_N_DAYS"
+      finalType === "LAST_N_DAYS"
         ? finalLastNDays
         : undefined;
 
+    /**
+     * ================================
+     * Recurring configuration
+     * ================================
+     */
+
+    if (finalType === "RECURRING") {
+      existing.recurringFrequency =
+        finalRecurringFrequency;
+
+      existing.recurringDayOfWeek =
+        finalRecurringFrequency === "WEEKLY"
+          ? finalRecurringDayOfWeek
+          : undefined;
+
+      existing.recurringDayOfMonth =
+        finalRecurringFrequency === "MONTHLY" ||
+        finalRecurringFrequency === "YEARLY"
+          ? finalRecurringDayOfMonth
+          : undefined;
+
+      existing.recurringMonth =
+        finalRecurringFrequency === "YEARLY"
+          ? finalRecurringMonth
+          : undefined;
+    } else {
+      /**
+       * If configuration is changed from RECURRING
+       * to another type, clear all recurring fields.
+       */
+      existing.recurringFrequency =
+        undefined;
+
+      existing.recurringDayOfWeek =
+        undefined;
+
+      existing.recurringDayOfMonth =
+        undefined;
+
+      existing.recurringMonth =
+        undefined;
+    }
+
+    /**
+     * ================================
+     * SAVE
+     * ================================
+     */
     await existing.save();
 
     return existing;
@@ -490,4 +1263,3 @@ export const toggleNotificationConfig =
 
     return config;
   };
-
