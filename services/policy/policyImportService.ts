@@ -458,7 +458,8 @@ export const importPoliciesFromExcel = async (
 ): Promise<ImportResult> => {
   try {
     const workbook = XLSX.readFile(filePath, {
-      cellDates: true,
+      // cellDates: true,
+        cellDates: false,
     });
 
     const sheetName = workbook.SheetNames[0];
@@ -507,6 +508,11 @@ for (let index = 0; index < rows.length; index++) {
   }
 
   try {
+    console.log("policyStartDate RAW:", row.policyStartDate);
+console.log("policyStartDate TYPE:", typeof row.policyStartDate);
+
+console.log("endDate RAW:", row.endDate);
+console.log("endDate TYPE:", typeof row.endDate);
     const policyData = validateRow(row, rowNumber);
 
     // Check duplicate policy number
