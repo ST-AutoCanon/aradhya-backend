@@ -28,6 +28,8 @@ import policyRoutes from "./routes/policyInfoRoutes";
 import policyNotificationConfigRoutes from "./routes/policyNotificationConfigRoutes";
 import cookieParser from "cookie-parser";
 
+import policyExpiryTestRoutes from "./routes/policyExpiryTestRoutes";
+
 import { startPolicyExpiryCron } from "./cron/policyExpiryCron";
 
 const app = express();
@@ -92,6 +94,12 @@ app.use("/api/excel", excelTemplatesRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/job-applications", jobApplicationRoutes);
 app.use("/api/policies", policyRoutes);
+
+app.use(
+  "/api/admin/policy-expiry",
+  policyExpiryTestRoutes
+);
+
 app.use(
   "/api/policy-notification-configs",
   policyNotificationConfigRoutes
