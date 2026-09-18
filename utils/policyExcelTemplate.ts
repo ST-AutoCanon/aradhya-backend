@@ -380,7 +380,7 @@ import XLSX from "xlsx";
 
 export const generatePolicyExcelTemplate = (): Buffer => {
   const headers = [
-    "month",
+    // "month",
     "slNo",
     "customerName",
     "email",
@@ -414,7 +414,7 @@ export const generatePolicyExcelTemplate = (): Buffer => {
    * 31/07/2027 = 31 July 2027
    */
   const exampleRow = [
-    "August",
+    // "August",
     1,
     "Rahul example",
     "rahul@gmail.com",
@@ -506,7 +506,6 @@ export const generatePolicyExcelTemplate = (): Buffer => {
    * =========================================================
    */
   worksheet["!cols"] = [
-    { wch: 15 }, // month
     { wch: 8 }, // slNo
     { wch: 25 }, // customerName
     { wch: 30 }, // email
@@ -573,7 +572,6 @@ export const generatePolicyExcelTemplate = (): Buffer => {
     [""],
 
     ["Required fields:"],
-    ["month"],
     ["slNo"],
     ["customerName"],
     ["contact"],

@@ -112,7 +112,6 @@ import { Types } from "mongoose";
 import Policy, { IPolicy } from "../../models/policyInfo";
 
 interface CreatePolicyData {
-  month: string;
   customerName: string;
   contact: string;
   reference?: string;
@@ -142,15 +141,64 @@ interface CreatePolicyData {
 
 interface UpdatePolicyData extends Partial<CreatePolicyData> {}
 
+// export const createPolicy = async (
+//   data: CreatePolicyData
+// ): Promise<IPolicy> => {
+//   const policy = await Policy.create({
+//     ...data,
+//     notificationCycleId: new Types.ObjectId(),
+//   });
+
+//   return policy;
+// };
+
+
 export const createPolicy = async (
   data: CreatePolicyData
 ): Promise<IPolicy> => {
-  const policy = await Policy.create({
+  console.log("========== CREATE POLICY SERVICE ==========");
+  console.log("Incoming policy data:", JSON.stringify(data, null, 2));
+  console.log("Incoming policy keys:", Object.keys(data));
+  console.log("Incoming month:", (data as any).month);
+
+  console.log("Mongoose Policy schema paths:", Object.keys(Policy.schema.paths));
+  console.log(
+    "Mongoose month schema path:",
+    Policy.schema.path("month")
+  );
+
+  const policyData = {
     ...data,
     notificationCycleId: new Types.ObjectId(),
-  });
+  };
 
-  return policy;
+  console.log(
+    "Data being sent to Policy.create:",
+    JSON.stringify(policyData, null, 2)
+  );
+
+  try {
+    const policy = await Policy.create(policyData);
+
+    console.log("Policy created successfully:", policy._id);
+    console.log("==========================================");
+
+    return policy;
+  } catch (error) {
+    console.error("========== CREATE POLICY ERROR ==========");
+
+    if (error instanceof Error) {
+      console.error("Error name:", error.name);
+      console.error("Error message:", error.message);
+      console.error("Full error:", error);
+    } else {
+      console.error("Unknown error:", error);
+    }
+
+    console.error("========================================");
+
+    throw error;
+  }
 };
 
 export const getAllPolicies = async (): Promise<IPolicy[]> => {

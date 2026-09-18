@@ -2358,21 +2358,40 @@ const buildEmailHtml = (
  * ============================================================
  */
 
+// const getDaysUntilExpiry = (
+//   policy: any,
+//   today: Date
+// ): number => {
+//   const expiryDate =
+//     getPolicyExpiryDate(
+//       policy.endDate
+//     );
+
+//   const difference =
+//     expiryDate.getTime() -
+//     today.getTime();
+
+//   return Math.round(
+//     difference /
+//       MILLISECONDS_IN_DAY
+//   );
+// };
+
+
 const getDaysUntilExpiry = (
   policy: any,
   today: Date
 ): number => {
-  const expiryDate =
-    getPolicyExpiryDate(
-      policy.endDate
-    );
+  const expiryDate = getPolicyExpiryDate(policy.endDate);
 
-  const difference =
-    expiryDate.getTime() -
-    today.getTime();
+  const todayKey = getIndiaDateString(today);
+  const expiryKey = getIndiaDateString(expiryDate);
+
+  const todayDate = createIndiaDate(todayKey);
+  const expiryDateOnly = createIndiaDate(expiryKey);
 
   return Math.round(
-    difference /
+    (expiryDateOnly.getTime() - todayDate.getTime()) /
       MILLISECONDS_IN_DAY
   );
 };
@@ -3660,14 +3679,22 @@ const getScheduledDateForConfig = (
       return null;
     }
 
-    if (
-      daysUntilExpiry >= 0 &&
-      daysUntilExpiry <
-        lastNDays
-    ) {
-      return today;
-    }
+    // if (
+    //   daysUntilExpiry >= 0 &&
+    //   daysUntilExpiry <
+    //     lastNDays
+    // ) {
+    //   return today;
+    // }
 
+
+    if (
+  daysUntilExpiry >= 0 &&
+  daysUntilExpiry <= lastNDays - 1
+) {
+  return today;
+    }
+    
     return null;
   }
 
