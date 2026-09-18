@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 
 export interface IPolicy extends Document {
-  month: string;
+
 
   customerName: string;
   email?: string;
@@ -46,12 +46,6 @@ export interface IPolicy extends Document {
 
 const policySchema = new Schema<IPolicy>(
   {
-    month: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
 
     customerName: {
       type: String,

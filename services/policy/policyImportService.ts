@@ -489,7 +489,6 @@ const PAYMENT_MODES = [
 ];
 
 const requiredFields = [
-  "month",
   "slNo",
   "customerName",
   "contact",
@@ -901,9 +900,7 @@ const validateRow = (
    */
 
   return {
-    month: String(
-      row.month
-    ).trim(),
+
 
     slNo,
 
