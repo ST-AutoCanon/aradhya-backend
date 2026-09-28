@@ -144,7 +144,7 @@ export const startPolicyExpiryCron = () => {
   );
 
   cron.schedule(
-    "0 9 * * *",
+    "0 6 * * *",
     async () => {
       console.log(
         "======================================="
