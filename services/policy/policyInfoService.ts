@@ -1,7 +1,7 @@
+// import { Types } from "mongoose";
 // import Policy, { IPolicy } from "../../models/policyInfo";
 
 // interface CreatePolicyData {
-//   month: string;
 //   customerName: string;
 //   contact: string;
 //   reference?: string;
@@ -31,12 +31,64 @@
 
 // interface UpdatePolicyData extends Partial<CreatePolicyData> {}
 
+// // export const createPolicy = async (
+// //   data: CreatePolicyData
+// // ): Promise<IPolicy> => {
+// //   const policy = await Policy.create({
+// //     ...data,
+// //     notificationCycleId: new Types.ObjectId(),
+// //   });
+
+// //   return policy;
+// // };
+
+
 // export const createPolicy = async (
 //   data: CreatePolicyData
 // ): Promise<IPolicy> => {
-//   const policy = await Policy.create(data);
+//   console.log("========== CREATE POLICY SERVICE ==========");
+//   console.log("Incoming policy data:", JSON.stringify(data, null, 2));
+//   console.log("Incoming policy keys:", Object.keys(data));
+//   console.log("Incoming month:", (data as any).month);
 
-//   return policy;
+//   console.log("Mongoose Policy schema paths:", Object.keys(Policy.schema.paths));
+//   console.log(
+//     "Mongoose month schema path:",
+//     Policy.schema.path("month")
+//   );
+
+//   const policyData = {
+//     ...data,
+//     notificationCycleId: new Types.ObjectId(),
+//   };
+
+//   console.log(
+//     "Data being sent to Policy.create:",
+//     JSON.stringify(policyData, null, 2)
+//   );
+
+//   try {
+//     const policy = await Policy.create(policyData);
+
+//     console.log("Policy created successfully:", policy._id);
+//     console.log("==========================================");
+
+//     return policy;
+//   } catch (error) {
+//     console.error("========== CREATE POLICY ERROR ==========");
+
+//     if (error instanceof Error) {
+//       console.error("Error name:", error.name);
+//       console.error("Error message:", error.message);
+//       console.error("Full error:", error);
+//     } else {
+//       console.error("Unknown error:", error);
+//     }
+
+//     console.error("========================================");
+
+//     throw error;
+//   }
 // };
 
 // export const getAllPolicies = async (): Promise<IPolicy[]> => {
@@ -57,9 +109,49 @@
 //   id: string,
 //   data: UpdatePolicyData
 // ): Promise<IPolicy | null> => {
+//   const existingPolicy = await Policy.findById(id);
+
+//   if (!existingPolicy) {
+//     return null;
+//   }
+
+//   /*
+//    * A new notification cycle is required when the policy
+//    * expiry/end date changes.
+//    *
+//    * This allows the new policy period to send reminders again
+//    * even if the previous cycle already has SENT notifications.
+//    */
+//   let notificationCycleId = existingPolicy.notificationCycleId;
+
+//   if (data.endDate) {
+//     const oldEndDate = new Date(existingPolicy.endDate);
+//     const newEndDate = new Date(data.endDate);
+
+//     const oldDate = oldEndDate.toISOString().split("T")[0];
+//     const newDate = newEndDate.toISOString().split("T")[0];
+
+//     if (oldDate !== newDate) {
+//       notificationCycleId = new Types.ObjectId();
+//     }
+//   }
+
+//   /*
+//    * For old policies created before notificationCycleId was added,
+//    * create a cycle ID if one doesn't exist.
+//    */
+//   if (!notificationCycleId) {
+//     notificationCycleId = new Types.ObjectId();
+//   }
+
 //   const policy = await Policy.findByIdAndUpdate(
 //     id,
-//     { $set: data },
+//     {
+//       $set: {
+//         ...data,
+//         notificationCycleId,
+//       },
+//     },
 //     {
 //       new: true,
 //       runValidators: true,
@@ -113,6 +205,7 @@ import Policy, { IPolicy } from "../../models/policyInfo";
 
 interface CreatePolicyData {
   customerName: string;
+  email?: string;
   contact: string;
   reference?: string;
   vehicleNo: string;
@@ -120,14 +213,19 @@ interface CreatePolicyData {
   insurerCompany: string;
   policyNumber: string;
   brokingCode?: string;
+
   policyStartDate: Date;
   endDate: Date;
+
   idv: number;
   ncb: number;
   premium: number;
+  renewalPremium?: number;
   netPremium: number;
+
   cashBack?: number;
   balancePayment?: number;
+
   policyPaymentMode:
     | "CASH"
     | "UPI"
@@ -136,39 +234,41 @@ interface CreatePolicyData {
     | "CHEQUE"
     | "ONLINE"
     | "OTHER";
+
   isActive?: boolean;
 }
 
 interface UpdatePolicyData extends Partial<CreatePolicyData> {}
 
-// export const createPolicy = async (
-//   data: CreatePolicyData
-// ): Promise<IPolicy> => {
-//   const policy = await Policy.create({
-//     ...data,
-//     notificationCycleId: new Types.ObjectId(),
-//   });
-
-//   return policy;
-// };
-
-
+/**
+ * ========================================================
+ * CREATE POLICY
+ * ========================================================
+ */
 export const createPolicy = async (
   data: CreatePolicyData
 ): Promise<IPolicy> => {
   console.log("========== CREATE POLICY SERVICE ==========");
-  console.log("Incoming policy data:", JSON.stringify(data, null, 2));
-  console.log("Incoming policy keys:", Object.keys(data));
-  console.log("Incoming month:", (data as any).month);
 
-  console.log("Mongoose Policy schema paths:", Object.keys(Policy.schema.paths));
   console.log(
-    "Mongoose month schema path:",
-    Policy.schema.path("month")
+    "Incoming policy data:",
+    JSON.stringify(data, null, 2)
+  );
+
+  console.log(
+    "Incoming policy keys:",
+    Object.keys(data)
+  );
+
+  console.log(
+    "Renewal Premium:",
+    data.renewalPremium
   );
 
   const policyData = {
     ...data,
+
+    // Every newly created policy gets a new notification cycle
     notificationCycleId: new Types.ObjectId(),
   };
 
@@ -180,12 +280,18 @@ export const createPolicy = async (
   try {
     const policy = await Policy.create(policyData);
 
-    console.log("Policy created successfully:", policy._id);
+    console.log(
+      "Policy created successfully:",
+      policy._id
+    );
+
     console.log("==========================================");
 
     return policy;
   } catch (error) {
-    console.error("========== CREATE POLICY ERROR ==========");
+    console.error(
+      "========== CREATE POLICY ERROR =========="
+    );
 
     if (error instanceof Error) {
       console.error("Error name:", error.name);
@@ -195,18 +301,32 @@ export const createPolicy = async (
       console.error("Unknown error:", error);
     }
 
-    console.error("========================================");
+    console.error(
+      "========================================"
+    );
 
     throw error;
   }
 };
 
+/**
+ * ========================================================
+ * GET ALL POLICIES
+ * ========================================================
+ */
 export const getAllPolicies = async (): Promise<IPolicy[]> => {
-  const policies = await Policy.find().sort({ createdAt: -1 });
+  const policies = await Policy.find().sort({
+    createdAt: -1,
+  });
 
   return policies;
 };
 
+/**
+ * ========================================================
+ * GET POLICY BY ID
+ * ========================================================
+ */
 export const getPolicyById = async (
   id: string
 ): Promise<IPolicy | null> => {
@@ -215,6 +335,11 @@ export const getPolicyById = async (
   return policy;
 };
 
+/**
+ * ========================================================
+ * UPDATE POLICY
+ * ========================================================
+ */
 export const updatePolicy = async (
   id: string,
   data: UpdatePolicyData
@@ -226,85 +351,139 @@ export const updatePolicy = async (
   }
 
   /*
+   * ======================================================
+   * NOTIFICATION CYCLE
+   * ======================================================
+   *
    * A new notification cycle is required when the policy
    * expiry/end date changes.
    *
-   * This allows the new policy period to send reminders again
-   * even if the previous cycle already has SENT notifications.
+   * This allows the new policy period to send reminders
+   * again even if the previous cycle already has
+   * SENT notifications.
    */
-  let notificationCycleId = existingPolicy.notificationCycleId;
+  let notificationCycleId =
+    existingPolicy.notificationCycleId;
 
   if (data.endDate) {
-    const oldEndDate = new Date(existingPolicy.endDate);
-    const newEndDate = new Date(data.endDate);
+    const oldEndDate = new Date(
+      existingPolicy.endDate
+    );
 
-    const oldDate = oldEndDate.toISOString().split("T")[0];
-    const newDate = newEndDate.toISOString().split("T")[0];
+    const newEndDate = new Date(
+      data.endDate
+    );
+
+    const oldDate = oldEndDate
+      .toISOString()
+      .split("T")[0];
+
+    const newDate = newEndDate
+      .toISOString()
+      .split("T")[0];
 
     if (oldDate !== newDate) {
-      notificationCycleId = new Types.ObjectId();
+      notificationCycleId =
+        new Types.ObjectId();
+
+      console.log(
+        "Policy end date changed. Created new notification cycle:",
+        notificationCycleId
+      );
     }
   }
 
   /*
-   * For old policies created before notificationCycleId was added,
-   * create a cycle ID if one doesn't exist.
+   * ======================================================
+   * OLD POLICY SUPPORT
+   * ======================================================
+   *
+   * For policies created before notificationCycleId was
+   * added, create a cycle ID if one doesn't exist.
    */
   if (!notificationCycleId) {
-    notificationCycleId = new Types.ObjectId();
+    notificationCycleId =
+      new Types.ObjectId();
   }
 
-  const policy = await Policy.findByIdAndUpdate(
-    id,
-    {
-      $set: {
-        ...data,
-        notificationCycleId,
+  const policy =
+    await Policy.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          ...data,
+          notificationCycleId,
+        },
       },
-    },
-    {
-      new: true,
-      runValidators: true,
-    }
-  );
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
 
   return policy;
 };
 
+/**
+ * ========================================================
+ * DELETE POLICY
+ * ========================================================
+ */
 export const deletePolicy = async (
   id: string
 ): Promise<IPolicy | null> => {
-  const policy = await Policy.findByIdAndDelete(id);
+  const policy =
+    await Policy.findByIdAndDelete(id);
 
   return policy;
 };
 
+/**
+ * ========================================================
+ * ACTIVATE POLICY
+ * ========================================================
+ */
 export const activatePolicy = async (
   id: string
 ): Promise<IPolicy | null> => {
-  const policy = await Policy.findByIdAndUpdate(
-    id,
-    { $set: { isActive: true } },
-    {
-      new: true,
-      runValidators: true,
-    }
-  );
+  const policy =
+    await Policy.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          isActive: true,
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
 
   return policy;
 };
 
+/**
+ * ========================================================
+ * DEACTIVATE POLICY
+ * ========================================================
+ */
 export const deactivatePolicy = async (
   id: string
 ): Promise<IPolicy | null> => {
-  const policy = await Policy.findByIdAndUpdate(
-    id,
-    { $set: { isActive: false } },
-    {
-      new: true,
-      runValidators: true,
-    }
-  );
+  const policy =
+    await Policy.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          isActive: false,
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
 
   return policy;
 };
