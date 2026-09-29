@@ -2448,7 +2448,7 @@ import PolicyNotificationConfig, {
   PolicyNotificationScheduleType,
 } from "../../models/PolicyNotificationConfig";
 
-import { sendMail } from "../messaging/emailService";
+import { sendMail } from "../messaging/emailPolicyService";
 
 import { Types } from "mongoose";
 
