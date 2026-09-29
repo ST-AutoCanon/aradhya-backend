@@ -16,7 +16,8 @@
 //  * ============================================================
 //  */
 
-// type NotificationConfig = IPolicyNotificationConfig;
+// type NotificationConfig =
+//   IPolicyNotificationConfig;
 
 // /**
 //  * ============================================================
@@ -43,6 +44,10 @@
 //  * Returns:
 //  *
 //  * YYYY-MM-DD
+//  *
+//  * Example:
+//  *
+//  * 2026-09-07
 //  */
 
 // const getIndiaDateString = (
@@ -66,20 +71,23 @@
 //  *
 //  * Example:
 //  *
-//  * 2026-08-29
+//  * 2026-09-07
 //  *
 //  * becomes:
 //  *
-//  * 2026-08-29T00:00:00.000Z
+//  * 2026-09-07T00:00:00.000Z
 //  */
 
 // const createIndiaDate = (
 //   dateString: string
 // ): Date => {
-//   const [year, month, day] =
-//     dateString
-//       .split("-")
-//       .map(Number);
+//   const [
+//     year,
+//     month,
+//     day,
+//   ] = dateString
+//     .split("-")
+//     .map(Number);
 
 //   return new Date(
 //     Date.UTC(
@@ -106,6 +114,77 @@
 //   return date
 //     .toISOString()
 //     .slice(0, 10);
+// };
+
+// /**
+//  * ============================================================
+//  * GET INDIA DATE PARTS
+//  * ============================================================
+//  *
+//  * Returns:
+//  *
+//  * {
+//  *   year,
+//  *   month,
+//  *   day
+//  * }
+//  *
+//  * based on India calendar date.
+//  */
+
+// const getIndiaDateParts = (
+//   date: Date
+// ): {
+//   year: number;
+//   month: number;
+//   day: number;
+// } => {
+//   const dateString =
+//     getIndiaDateString(date);
+
+//   const [
+//     year,
+//     month,
+//     day,
+//   ] = dateString
+//     .split("-")
+//     .map(Number);
+
+//   return {
+//     year,
+//     month,
+//     day,
+//   };
+// };
+
+// /**
+//  * ============================================================
+//  * GET INDIA DAY OF WEEK
+//  * ============================================================
+//  *
+//  * Returns:
+//  *
+//  * 0 = Sunday
+//  * 1 = Monday
+//  * 2 = Tuesday
+//  * 3 = Wednesday
+//  * 4 = Thursday
+//  * 5 = Friday
+//  * 6 = Saturday
+//  */
+
+// const getIndiaDayOfWeek = (
+//   date: Date
+// ): number => {
+//   const indiaDateString =
+//     getIndiaDateString(date);
+
+//   const indiaDate =
+//     createIndiaDate(
+//       indiaDateString
+//     );
+
+//   return indiaDate.getUTCDay();
 // };
 
 // /**
@@ -138,17 +217,6 @@
 //  *
 //  * Converts policy.endDate into the Indian
 //  * calendar date represented as UTC midnight.
-//  *
-//  * Example:
-//  *
-//  * endDate:
-//  * 2026-08-28T18:30:00.000Z
-//  *
-//  * India date:
-//  * 2026-08-29
-//  *
-//  * Stored:
-//  * 2026-08-29T00:00:00.000Z
 //  */
 
 // const getPolicyExpiryDate = (
@@ -198,11 +266,12 @@
 
 //   const lastNDays =
 //     Number(
-//       config.lastNDays ?? 0
+//       config.lastNDays ??
+//         0
 //     );
 
 //   /**
-//    * Replace customer name
+//    * Customer name
 //    */
 
 //   subject =
@@ -212,7 +281,7 @@
 //     );
 
 //   /**
-//    * Replace generic days placeholder
+//    * Generic days placeholder
 //    */
 
 //   subject =
@@ -233,7 +302,7 @@
 //     );
 
 //   /**
-//    * Replace specific placeholders
+//    * Specific placeholders
 //    */
 
 //   subject =
@@ -295,6 +364,9 @@
 //     case "LAST_N_DAYS":
 //       return "Policy Expiry Reminder";
 
+//     case "RECURRING":
+//       return "Insurance Policy Reminder";
+
 //     default:
 //       return "Policy Expiry Notification";
 //   }
@@ -337,6 +409,9 @@
 
 //     case "LAST_N_DAYS":
 //       return "Your insurance policy is approaching its expiry date. Please renew it as soon as possible.";
+
+//     case "RECURRING":
+//       return "This is your scheduled insurance policy reminder. Please review your policy details and contact us if any action is required.";
 
 //     default:
 //       return "Please check your insurance policy expiry details.";
@@ -442,6 +517,10 @@
 //             ${expiryDate}
 //           </td>
 //         </tr>
+//         <tr>
+//   <td><strong>Renewal Premium</strong></td>
+//   <td>₹${policy.renewalPremium}</td>
+// </tr>
 
 //       </table>
 
@@ -465,38 +544,485 @@
 //  * ============================================================
 //  */
 
+// // const getDaysUntilExpiry = (
+// //   policy: any,
+// //   today: Date
+// // ): number => {
+// //   const expiryDate =
+// //     getPolicyExpiryDate(
+// //       policy.endDate
+// //     );
+
+// //   const difference =
+// //     expiryDate.getTime() -
+// //     today.getTime();
+
+// //   return Math.round(
+// //     difference /
+// //       MILLISECONDS_IN_DAY
+// //   );
+// // };
+
+
 // const getDaysUntilExpiry = (
 //   policy: any,
 //   today: Date
 // ): number => {
-//   const expiryDate =
-//     getPolicyExpiryDate(
-//       policy.endDate
-//     );
+//   const expiryDate = getPolicyExpiryDate(policy.endDate);
 
-//   const difference =
-//     expiryDate.getTime() -
-//     today.getTime();
+//   const todayKey = getIndiaDateString(today);
+//   const expiryKey = getIndiaDateString(expiryDate);
+
+//   const todayDate = createIndiaDate(todayKey);
+//   const expiryDateOnly = createIndiaDate(expiryKey);
 
 //   return Math.round(
-//     difference /
+//     (expiryDateOnly.getTime() - todayDate.getTime()) /
 //       MILLISECONDS_IN_DAY
 //   );
 // };
 
-// /**
-//  * ============================================================
-//  * GET SCHEDULED DATE
-//  * ============================================================
-//  *
-//  * Returns today's date if reminder is due.
-//  */
+
 
 // const getScheduledDateForConfig = (
 //   policy: any,
 //   config: NotificationConfig,
 //   today: Date
 // ): Date | null => {
+//   /**
+//    * ========================================================
+//    * RECURRING
+//    * ========================================================
+//    *
+//    * Recurring notifications are sent only during the
+//    * LAST 30 DAYS before policy expiry.
+//    *
+//    * Example:
+//    *
+//    * Policy expiry = 11 March 2027
+//    *
+//    * WEEKLY / SATURDAY:
+//    *
+//    * 20 Feb 2027 -> 19 days remaining -> SEND
+//    * 27 Feb 2027 -> 12 days remaining -> SEND
+//    * 06 Mar 2027 ->  5 days remaining -> SEND
+//    *
+//    * Outside last 30 days:
+//    *
+//    * 08 Feb 2027 -> 31 days remaining -> NO
+//    *
+//    * After expiry:
+//    *
+//    * 12 Mar 2027 -> -1 day -> NO
+//    */
+
+//   if (config.type === "RECURRING") {
+//     /**
+//      * ======================================================
+//      * GET POLICY EXPIRY DATE
+//      * ======================================================
+//      */
+
+//     const expiryDate = getPolicyExpiryDate(
+//       policy.endDate
+//     );
+
+//     const expiryDateKey = getDateKey(
+//       expiryDate
+//     );
+
+//     const todayDateKey = getDateKey(
+//       today
+//     );
+
+//     /**
+//      * ======================================================
+//      * GET DAYS UNTIL EXPIRY
+//      * ======================================================
+//      */
+
+//     const daysUntilExpiry =
+//       getDaysUntilExpiry(
+//         policy,
+//         today
+//       );
+
+//     console.log(
+//       `🔁 Recurring check for policy ${policy.policyNumber}`
+//     );
+
+//     console.log(
+//       `   Today: ${todayDateKey}`
+//     );
+
+//     console.log(
+//       `   Expiry: ${expiryDateKey}`
+//     );
+
+//     console.log(
+//       `   Days until expiry: ${daysUntilExpiry}`
+//     );
+
+//     /**
+//      * ======================================================
+//      * LAST 30 DAYS CHECK
+//      * ======================================================
+//      *
+//      * Eligible:
+//      *
+//      *   30 days before expiry
+//      *   through expiry day
+//      *
+//      * Not eligible:
+//      *
+//      *   More than 30 days before expiry
+//      *   OR
+//      *   after expiry
+//      */
+
+//     if (
+//       daysUntilExpiry < 0 ||
+//       daysUntilExpiry > 30
+//     ) {
+//       console.log(
+//         "⏭️ Outside last 30 days before policy expiry. Recurring reminder skipped."
+//       );
+
+//       return null;
+//     }
+
+//     /**
+//      * ======================================================
+//      * WEEKLY
+//      * ======================================================
+//      */
+
+//     if (
+//       config.recurringFrequency ===
+//       "WEEKLY"
+//     ) {
+//       const recurringDayOfWeek =
+//         config.recurringDayOfWeek;
+
+//       /**
+//        * Validate configured weekday.
+//        *
+//        * 0 = Sunday
+//        * 1 = Monday
+//        * 2 = Tuesday
+//        * 3 = Wednesday
+//        * 4 = Thursday
+//        * 5 = Friday
+//        * 6 = Saturday
+//        */
+
+//       if (
+//         recurringDayOfWeek ===
+//           undefined ||
+//         recurringDayOfWeek ===
+//           null ||
+//         recurringDayOfWeek < 0 ||
+//         recurringDayOfWeek > 6
+//       ) {
+//         console.error(
+//           `❌ Invalid WEEKLY recurring configuration: ${config.name}`
+//         );
+
+//         return null;
+//       }
+
+//       /**
+//        * Get today's weekday using India timezone.
+//        */
+
+//       const todayDayOfWeek =
+//         getIndiaDayOfWeek(
+//           today
+//         );
+
+//       console.log(
+//         `   Today day of week: ${todayDayOfWeek}`
+//       );
+
+//       console.log(
+//         `   Configured day of week: ${recurringDayOfWeek}`
+//       );
+
+//       /**
+//        * Only send on configured weekday.
+//        */
+
+//       if (
+//         todayDayOfWeek !==
+//         recurringDayOfWeek
+//       ) {
+//         console.log(
+//           "⏭️ Today is not the configured recurring day."
+//         );
+
+//         return null;
+//       }
+
+//       /**
+//        * ====================================================
+//        * RECURRING WEEKLY REMINDER IS DUE
+//        * ====================================================
+//        */
+
+//       console.log(
+//         "🔔 RECURRING WEEKLY REMINDER IS DUE"
+//       );
+
+//       console.log(
+//         `   Policy: ${policy.policyNumber}`
+//       );
+
+//       console.log(
+//         `   Expiry: ${expiryDateKey}`
+//       );
+
+//       console.log(
+//         `   Today: ${todayDateKey}`
+//       );
+
+//       console.log(
+//         `   Days remaining: ${daysUntilExpiry}`
+//       );
+
+//       console.log(
+//         `   Day of week: ${todayDayOfWeek}`
+//       );
+
+//       return today;
+//     }
+
+//     /**
+//      * ======================================================
+//      * MONTHLY
+//      * ======================================================
+//      *
+//      * Monthly recurring notifications are also restricted
+//      * to the last 30 days before expiry.
+//      *
+//      * Example:
+//      *
+//      * recurringDayOfMonth = 20
+//      * expiry = 11 March
+//      *
+//      * If 20 Feb is within the last 30 days:
+//      * -> SEND
+//      */
+
+//     if (
+//       config.recurringFrequency ===
+//       "MONTHLY"
+//     ) {
+//       const recurringDayOfMonth =
+//         config.recurringDayOfMonth;
+
+//       /**
+//        * Validate configured day.
+//        */
+
+//       if (
+//         recurringDayOfMonth ===
+//           undefined ||
+//         recurringDayOfMonth ===
+//           null ||
+//         recurringDayOfMonth < 1 ||
+//         recurringDayOfMonth > 31
+//       ) {
+//         console.error(
+//           `❌ Invalid MONTHLY recurring configuration: ${config.name}`
+//         );
+
+//         return null;
+//       }
+
+//       /**
+//        * Get today's India calendar day.
+//        */
+
+//       const {
+//         day: todayDay,
+//       } = getIndiaDateParts(
+//         today
+//       );
+
+//       /**
+//        * Only send on configured day of month.
+//        */
+
+//       if (
+//         todayDay !==
+//         recurringDayOfMonth
+//       ) {
+//         console.log(
+//           "⏭️ Today is not the configured recurring day of month."
+//         );
+
+//         return null;
+//       }
+
+//       console.log(
+//         "🔔 RECURRING MONTHLY REMINDER IS DUE"
+//       );
+
+//       console.log(
+//         `   Policy: ${policy.policyNumber}`
+//       );
+
+//       console.log(
+//         `   Expiry: ${expiryDateKey}`
+//       );
+
+//       console.log(
+//         `   Today: ${todayDateKey}`
+//       );
+
+//       console.log(
+//         `   Days remaining: ${daysUntilExpiry}`
+//       );
+
+//       return today;
+//     }
+
+//     /**
+//      * ======================================================
+//      * YEARLY
+//      * ======================================================
+//      *
+//      * Yearly recurring notifications are restricted to
+//      * the last 30 days before expiry.
+//      */
+
+//     if (
+//       config.recurringFrequency ===
+//       "YEARLY"
+//     ) {
+//       const recurringMonth =
+//         config.recurringMonth;
+
+//       const recurringDayOfMonth =
+//         config.recurringDayOfMonth;
+
+//       /**
+//        * Validate month.
+//        */
+
+//       if (
+//         recurringMonth ===
+//           undefined ||
+//         recurringMonth ===
+//           null ||
+//         recurringMonth < 1 ||
+//         recurringMonth > 12
+//       ) {
+//         console.error(
+//           `❌ Invalid YEARLY recurring month: ${config.name}`
+//         );
+
+//         return null;
+//       }
+
+//       /**
+//        * Validate day.
+//        */
+
+//       if (
+//         recurringDayOfMonth ===
+//           undefined ||
+//         recurringDayOfMonth ===
+//           null ||
+//         recurringDayOfMonth < 1 ||
+//         recurringDayOfMonth > 31
+//       ) {
+//         console.error(
+//           `❌ Invalid YEARLY recurring day: ${config.name}`
+//         );
+
+//         return null;
+//       }
+
+//       /**
+//        * Get India date parts.
+//        */
+
+//       const {
+//         year: todayYear,
+//         month: todayMonth,
+//         day: todayDay,
+//       } = getIndiaDateParts(
+//         today
+//       );
+
+//       const {
+//         year: expiryYear,
+//       } = getIndiaDateParts(
+//         expiryDate
+//       );
+
+//       /**
+//        * Match configured month/day and expiry year.
+//        */
+
+//       if (
+//         todayMonth !==
+//           recurringMonth ||
+//         todayYear !==
+//           expiryYear ||
+//         todayDay !==
+//           recurringDayOfMonth
+//       ) {
+//         console.log(
+//           "⏭️ Today does not match yearly recurring configuration."
+//         );
+
+//         return null;
+//       }
+
+//       console.log(
+//         "🔔 RECURRING YEARLY REMINDER IS DUE"
+//       );
+
+//       console.log(
+//         `   Policy: ${policy.policyNumber}`
+//       );
+
+//       console.log(
+//         `   Expiry: ${expiryDateKey}`
+//       );
+
+//       console.log(
+//         `   Today: ${todayDateKey}`
+//       );
+
+//       console.log(
+//         `   Days remaining: ${daysUntilExpiry}`
+//       );
+
+//       return today;
+//     }
+
+//     /**
+//      * ======================================================
+//      * INVALID FREQUENCY
+//      * ======================================================
+//      */
+
+//     console.error(
+//       `❌ Invalid recurring frequency for config ${config.name}`
+//     );
+
+//     return null;
+//   }
+
+//   /**
+//    * ========================================================
+//    * EXPIRY BASED REMINDERS
+//    * ========================================================
+//    */
+
 //   const daysUntilExpiry =
 //     getDaysUntilExpiry(
 //       policy,
@@ -547,7 +1073,8 @@
 //     "ON_EXPIRY"
 //   ) {
 //     if (
-//       daysUntilExpiry === 0
+//       daysUntilExpiry ===
+//       0
 //     ) {
 //       return today;
 //     }
@@ -622,25 +1149,28 @@
 //       return null;
 //     }
 
-//     if (
-//       daysUntilExpiry >= 0 &&
-//       daysUntilExpiry <
-//         lastNDays
-//     ) {
-//       return today;
-//     }
+//     // if (
+//     //   daysUntilExpiry >= 0 &&
+//     //   daysUntilExpiry <
+//     //     lastNDays
+//     // ) {
+//     //   return today;
+//     // }
 
+
+//     if (
+//   daysUntilExpiry >= 0 &&
+//   daysUntilExpiry <= lastNDays - 1
+// ) {
+//   return today;
+//     }
+    
 //     return null;
 //   }
 
 //   return null;
 // };
 
-// /**
-//  * ============================================================
-//  * GET CONFIGURATION VALUE
-//  * ============================================================
-//  */
 
 // const getScheduleValue = (
 //   config: NotificationConfig
@@ -658,112 +1188,109 @@
 //     case "ON_EXPIRY":
 //       return undefined;
 
+//     case "RECURRING":
+//       return undefined;
+
 //     default:
 //       return undefined;
 //   }
 // };
 
-// /**
-//  * ============================================================
-//  * GET / CREATE NOTIFICATION CYCLE ID
-//  * ============================================================
-//  *
-//  * Every policy must have a notificationCycleId.
-//  *
-//  * IMPORTANT:
-//  *
-//  * The policy update logic should generate a NEW
-//  * notificationCycleId whenever the policy is updated
-//  * and you want the reminder sequence to restart.
-//  *
-//  * This function is mainly a safety fallback for older
-//  * policies which do not have a cycle ID yet.
-//  */
 
-// const getNotificationCycleId = async (
-//   policy: any
-// ): Promise<Types.ObjectId> => {
-//   /**
-//    * Existing cycle
-//    */
+// const getNotificationCycleId =
+//   async (
+//     policy: any
+//   ): Promise<Types.ObjectId> => {
+//     /**
+//      * Existing cycle
+//      */
 
-//   if (
-//     policy.notificationCycleId
-//   ) {
-//     return new Types.ObjectId(
+//     if (
 //       policy.notificationCycleId
-//     );
-//   }
-
-//   /**
-//    * Legacy policy without cycle ID.
-//    *
-//    * Create one so the notification system can work.
-//    */
-
-//   const newCycleId =
-//     new Types.ObjectId();
-
-//   console.log(
-//     `🆕 Creating notification cycle for legacy policy ${policy.policyNumber}`
-//   );
-
-//   console.log(
-//     `   Cycle ID: ${newCycleId.toString()}`
-//   );
-
-//   /**
-//    * Save cycle ID on Policy.
-//    *
-//    * This requires notificationCycleId to exist
-//    * in the Policy mongoose schema.
-//    */
-
-//   await Policy.updateOne(
-//     {
-//       _id: policy._id,
-//     },
-//     {
-//       $set: {
-//         notificationCycleId:
-//           newCycleId,
-//       },
+//     ) {
+//       return new Types.ObjectId(
+//         policy.notificationCycleId
+//       );
 //     }
-//   );
 
-//   /**
-//    * Also update local policy object so the rest
-//    * of this cron run uses the same cycle.
-//    */
+//     /**
+//      * Legacy policy without cycle ID.
+//      */
 
-//   policy.notificationCycleId =
-//     newCycleId;
+//     const newCycleId =
+//       new Types.ObjectId();
 
-//   return newCycleId;
-// };
+//     console.log(
+//       `🆕 Creating notification cycle for legacy policy ${policy.policyNumber}`
+//     );
+
+//     console.log(
+//       `   Cycle ID: ${newCycleId.toString()}`
+//     );
+
+//     await Policy.updateOne(
+//       {
+//         _id: policy._id,
+//       },
+//       {
+//         $set: {
+//           notificationCycleId:
+//             newCycleId,
+//         },
+//       }
+//     );
+
+//     /**
+//      * Update local policy object.
+//      */
+
+//     policy.notificationCycleId =
+//       newCycleId;
+
+//     return newCycleId;
+//   };
 
 // /**
 //  * ============================================================
-//  * GET NOTIFICATION QUERY
+//  * BUILD NOTIFICATION QUERY
 //  * ============================================================
 //  *
-//  * IMPORTANT:
+//  * EXPIRY BASED:
 //  *
-//  * notificationCycleId is now part of the notification
-//  * identity.
+//  * policyId
+//  * +
+//  * notificationCycleId
+//  * +
+//  * reminderConfigId
+//  * +
+//  * expiryDate
+//  * +
+//  * scheduleType
+//  * +
+//  * scheduledDate
 //  *
-//  * Therefore:
 //  *
-//  * OLD CYCLE:
+//  * RECURRING:
 //  *
-//  * policyId + oldCycleId + config + date
+//  * policyId
+//  * +
+//  * reminderConfigId
+//  * +
+//  * scheduleType
+//  * +
+//  * scheduledDate
 //  *
-//  * NEW CYCLE:
 //  *
-//  * policyId + newCycleId + config + date
+//  * This means:
 //  *
-//  * Even if the expiry date is exactly the same,
-//  * the new cycle creates a NEW notification record.
+//  * Every Monday:
+//  *
+//  * 2026-09-07 -> one notification
+//  * 2026-09-14 -> another notification
+//  * 2026-09-21 -> another notification
+//  *
+//  * A policy renewal does not create a duplicate
+//  * notification for the same calendar date.
 //  */
 
 // const buildNotificationQuery = (
@@ -774,29 +1301,36 @@
 //   scheduledDate: Date,
 //   scheduleValue?: number
 // ) => {
+//   if (config.type === "RECURRING") {
+//     return {
+//       policyId: policy._id,
+
+//       notificationCycleId,
+
+//       reminderConfigId: config._id,
+
+//       scheduleType: config.type,
+
+//       scheduledDate,
+//     };
+//   }
+
 //   const query: any = {
-//     policyId:
-//       policy._id,
+//     policyId: policy._id,
 
 //     notificationCycleId,
 
-//     reminderConfigId:
-//       config._id,
+//     reminderConfigId: config._id,
 
 //     expiryDate,
 
-//     scheduleType:
-//       config.type,
+//     scheduleType: config.type,
 
 //     scheduledDate,
 //   };
 
-//   if (
-//     scheduleValue !==
-//     undefined
-//   ) {
-//     query.scheduleValue =
-//       scheduleValue;
+//   if (scheduleValue !== undefined) {
+//     query.scheduleValue = scheduleValue;
 //   }
 
 //   return query;
@@ -842,6 +1376,9 @@
 //      * ========================================================
 //      * EXPIRY DATE SNAPSHOT
 //      * ========================================================
+//      *
+//      * Still stored for recurring notifications as historical
+//      * policy information.
 //      */
 
 //     const expiryDate =
@@ -920,6 +1457,12 @@
 
 //           scheduledDate:
 //             scheduledDate.toISOString(),
+
+//           identity:
+//             config.type ===
+//             "RECURRING"
+//               ? "policyId + reminderConfigId + scheduleType + scheduledDate"
+//               : "policyId + notificationCycleId + reminderConfigId + expiryDate + scheduleType + scheduledDate",
 //         },
 //         null,
 //         2
@@ -956,11 +1499,10 @@
 //                 policy._id,
 
 //               /**
-//                * IMPORTANT:
+//                * For recurring notifications this cycle
+//                * is retained as historical information.
 //                *
-//                * This is what separates old policy
-//                * notification history from the new
-//                * notification cycle.
+//                * It is NOT part of the recurring identity.
 //                */
 //               notificationCycleId,
 
@@ -1000,6 +1542,16 @@
 
 //         console.log(
 //           `   Cycle ID: ${notificationCycleId.toString()}`
+//         );
+
+//         console.log(
+//           `   Type: ${config.type}`
+//         );
+
+//         console.log(
+//           `   Scheduled: ${getDateKey(
+//             scheduledDate
+//           )}`
 //         );
 
 //         console.log(
@@ -1127,9 +1679,6 @@
 
 //       /**
 //        * Do not reset SENT.
-//        *
-//        * SENT means this exact notification cycle/date
-//        * was already successfully sent.
 //        */
 
 //       if (
@@ -1164,16 +1713,6 @@
 //      * ========================================================
 //      * ALREADY SENT
 //      * ========================================================
-//      *
-//      * IMPORTANT:
-//      *
-//      * This check is still required.
-//      *
-//      * But now it only applies to the CURRENT
-//      * notificationCycleId.
-//      *
-//      * Therefore an old SENT record cannot block
-//      * a new policy-update cycle.
 //      */
 
 //     if (
@@ -1258,7 +1797,17 @@
 //       );
 
 //       console.log(
+//         `   Type: ${config.type}`
+//       );
+
+//       console.log(
 //         `   Cycle: ${notificationCycleId.toString()}`
+//       );
+
+//       console.log(
+//         `   Scheduled: ${getDateKey(
+//           scheduledDate
+//         )}`
 //       );
 
 //       const mailInfo =
@@ -1323,10 +1872,7 @@
 //       );
 
 //       console.log(
-//         `📬 Response: ${
-//           mailInfo?.response ||
-//           "N/A"
-//         }`
+//         `📌 Type: ${config.type}`
 //       );
 
 //       console.log(
@@ -1339,6 +1885,13 @@
 //         `📅 Expiry: ${getDateKey(
 //           expiryDate
 //         )}`
+//       );
+
+//       console.log(
+//         `📬 Response: ${
+//           mailInfo?.response ||
+//           "N/A"
+//         }`
 //       );
 
 //       console.log(
@@ -1384,6 +1937,16 @@
 //       );
 
 //       console.error(
+//         `📌 Type: ${config.type}`
+//       );
+
+//       console.error(
+//         `📅 Scheduled: ${getDateKey(
+//           scheduledDate
+//         )}`
+//       );
+
+//       console.error(
 //         `❌ Error: ${
 //           error?.message ||
 //           "Unknown error"
@@ -1395,10 +1958,7 @@
 //       );
 
 //       /**
-//        * Do not throw here.
-//        *
-//        * This allows the cron to continue processing
-//        * other policies/reminders.
+//        * Continue processing other notifications.
 //        */
 //     }
 
@@ -1410,6 +1970,7 @@
 
 //     console.log(
 //       `📊 ${config.name} completed for ${policy.policyNumber} | ` +
+//       `Type: ${config.type} | ` +
 //       `Cycle: ${notificationCycleId.toString()} | ` +
 //       `Email: ${
 //         notification.email
@@ -1578,10 +2139,11 @@
 //          * GET NOTIFICATION CYCLE
 //          * ====================================================
 //          *
-//          * This is the critical new part.
+//          * This remains available for expiry-based
+//          * notifications.
 //          *
-//          * All reminders generated during the current
-//          * policy lifecycle use this cycle ID.
+//          * Recurring notifications do not use the cycle
+//          * as part of their unique identity.
 //          */
 
 //         const notificationCycleId =
@@ -1614,6 +2176,10 @@
 //          * ====================================================
 //          * DAYS UNTIL EXPIRY
 //          * ====================================================
+//          *
+//          * This is useful for expiry-based reminders.
+//          *
+//          * RECURRING reminders ignore this value.
 //          */
 
 //         const daysUntilExpiry =
@@ -1653,7 +2219,7 @@
 
 //           /**
 //            * ==================================================
-//            * CONFIG VALUE LOGGING
+//            * EXPIRY CONFIG LOGGING
 //            * ==================================================
 //            */
 
@@ -1682,6 +2248,52 @@
 //             console.log(
 //               `📅 Last N days: ${config.lastNDays}`
 //             );
+//           }
+
+//           /**
+//            * ==================================================
+//            * RECURRING CONFIG LOGGING
+//            * ==================================================
+//            */
+
+//           if (
+//             config.type ===
+//             "RECURRING"
+//           ) {
+//             console.log(
+//               `🔁 Recurring frequency: ${config.recurringFrequency}`
+//             );
+
+//             if (
+//               config.recurringFrequency ===
+//               "WEEKLY"
+//             ) {
+//               console.log(
+//                 `📅 Recurring day of week: ${config.recurringDayOfWeek}`
+//               );
+//             }
+
+//             if (
+//               config.recurringFrequency ===
+//               "MONTHLY"
+//             ) {
+//               console.log(
+//                 `📅 Recurring day of month: ${config.recurringDayOfMonth}`
+//               );
+//             }
+
+//             if (
+//               config.recurringFrequency ===
+//               "YEARLY"
+//             ) {
+//               console.log(
+//                 `📅 Recurring month: ${config.recurringMonth}`
+//               );
+
+//               console.log(
+//                 `📅 Recurring day of month: ${config.recurringDayOfMonth}`
+//               );
+//             }
 //           }
 
 //           /**
@@ -1740,9 +2352,21 @@
 //           );
 
 //           console.log(
-//             `   Schedule Value: ${getScheduleValue(
-//               config
-//             )}`
+//             `   Frequency: ${
+//               config.type ===
+//               "RECURRING"
+//                 ? config.recurringFrequency ||
+//                   "N/A"
+//                 : "N/A"
+//             }`
+//           );
+
+//           console.log(
+//             `   Schedule Value: ${
+//               getScheduleValue(
+//                 config
+//               ) ?? "N/A"
+//             }`
 //           );
 
 //           console.log(
@@ -2238,117 +2862,589 @@ const getMessage = (
 
 /**
  * ============================================================
- * BUILD EMAIL HTML
+ * HTML ESCAPE
+ * ============================================================
+ *
+ * Keeps dynamic customer/policy values safe when inserted
+ * into the email HTML.
+ */
+const escapeHtml = (value: unknown): string => {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};
+
+/**
+ * ============================================================
+ * FORMAT PREMIUM
  * ============================================================
  */
+const formatPremium = (
+  value: unknown
+): string => {
+  const amount = Number(value);
 
+  if (!Number.isFinite(amount)) {
+    return "—";
+  }
+
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
+
+/**
+ * ============================================================
+ * BUILD EMAIL HTML
+ * ============================================================
+ *
+ * Professional, responsive insurance renewal reminder email.
+ * Scheduling/business logic remains unchanged.
+ */
 const buildEmailHtml = (
   config: NotificationConfig,
   policy: any
 ): string => {
+  const customerName =
+    escapeHtml(policy.customerName || "Customer");
+
+  const policyNumber =
+    escapeHtml(policy.policyNumber || "—");
+
+  const vehicleNumber =
+    escapeHtml(policy.vehicleNo || "—");
+
+  const insurer =
+    escapeHtml(policy.insurerCompany || "—");
+
   const expiryDate =
-    formatExpiryDate(
-      policy.endDate
+    escapeHtml(
+      formatExpiryDate(policy.endDate)
     );
 
+  const premium =
+    formatPremium(policy.renewalPremium);
+
   const heading =
-    getHeading(config);
+    escapeHtml(getHeading(config));
 
   const message =
-    getMessage(config);
+    escapeHtml(getMessage(config));
+
+  const policyType =
+    escapeHtml(
+      policy.policyType ||
+      policy.policyName ||
+      policy.vehicleType ||
+      "Insurance Policy"
+    );
+
+  const daysUntilExpiry =
+    getDaysUntilExpiry(
+      policy,
+      new Date()
+    );
+
+  let statusLabel =
+    "Renewal Reminder";
+
+  let statusColor =
+    "#1d4ed8";
+
+  let statusBackground =
+    "#eff6ff";
+
+  if (config.type === "ON_EXPIRY") {
+    statusLabel = "Expires Today";
+    statusColor = "#b45309";
+    statusBackground = "#fffbeb";
+  } else if (config.type === "AFTER_EXPIRY") {
+    statusLabel = "Action Required";
+    statusColor = "#b91c1c";
+    statusBackground = "#fef2f2";
+  } else if (
+    config.type === "BEFORE_EXPIRY" ||
+    config.type === "LAST_N_DAYS" ||
+    config.type === "RECURRING"
+  ) {
+    statusLabel = "Renewal Due Soon";
+    statusColor = "#047857";
+    statusBackground = "#ecfdf5";
+  }
+
+  const urgencyText =
+    daysUntilExpiry > 0
+      ? `${daysUntilExpiry} day${
+          daysUntilExpiry === 1 ? "" : "s"
+        } remaining`
+      : daysUntilExpiry === 0
+        ? "Expires today"
+        : `${Math.abs(daysUntilExpiry)} day${
+            Math.abs(daysUntilExpiry) === 1 ? "" : "s"
+          } past expiry`;
 
   return `
-    <div style="
-      font-family: Arial, sans-serif;
-      font-size: 14px;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+  <meta
+    name="color-scheme"
+    content="light"
+  />
+  <title>Insurance Policy Renewal Reminder</title>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100% !important;
+      background-color: #f3f6fa;
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Arial,
+        sans-serif;
+      color: #172033;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    table {
+      border-collapse: collapse;
+      border-spacing: 0;
+    }
+
+    img {
+      border: 0;
+      display: block;
+      max-width: 100%;
+    }
+
+    .email-wrapper {
+      width: 100%;
+      padding: 32px 12px;
+      background-color: #f3f6fa;
+    }
+
+    .email-container {
+      width: 100%;
+      max-width: 680px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #e4e9f0;
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow:
+        0 10px 30px rgba(15, 23, 42, 0.07);
+    }
+
+    .header {
+      background:
+        linear-gradient(
+          135deg,
+          #123b70 0%,
+          #1d5fa7 100%
+        );
+      padding: 28px 34px;
+    }
+
+    .brand {
+      color: #ffffff;
+      font-size: 18px;
+      line-height: 1.3;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
+    .brand-subtitle {
+      margin-top: 5px;
+      color: #dbeafe;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .content {
+      padding: 34px;
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: #1d5fa7;
+      font-size: 12px;
+      line-height: 1.4;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .heading {
+      margin: 0;
+      color: #111827;
+      font-size: 28px;
+      line-height: 1.25;
+      font-weight: 750;
+    }
+
+    .greeting {
+      margin: 22px 0 8px;
+      color: #111827;
+      font-size: 16px;
       line-height: 1.6;
-      color: #333;
-    ">
+    }
 
-      <h2>${heading}</h2>
+    .message {
+      margin: 0;
+      color: #526071;
+      font-size: 15px;
+      line-height: 1.75;
+    }
 
-      <p>
-        Dear <strong>${policy.customerName}</strong>,
-      </p>
+    .status {
+      margin-top: 24px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: ${statusBackground};
+      border: 1px solid ${statusColor}22;
+    }
 
-      <p>
-        ${message}
-      </p>
+    .status-label {
+      color: ${statusColor};
+      font-size: 13px;
+      line-height: 1.4;
+      font-weight: 750;
+    }
 
-      <table
-        cellpadding="8"
-        cellspacing="0"
-        border="1"
-        style="
-          border-collapse: collapse;
-          width: 100%;
-          max-width: 600px;
-        "
-      >
+    .status-detail {
+      margin-top: 3px;
+      color: #4b5563;
+      font-size: 12px;
+      line-height: 1.5;
+    }
 
-        <tr>
-          <td>
-            <strong>Customer Name</strong>
-          </td>
+    .section-title {
+      margin: 30px 0 12px;
+      color: #111827;
+      font-size: 15px;
+      line-height: 1.5;
+      font-weight: 700;
+    }
 
-          <td>
-            ${policy.customerName}
-          </td>
-        </tr>
+    .details {
+      width: 100%;
+      border: 1px solid #e5eaf0;
+      border-radius: 14px;
+      overflow: hidden;
+    }
 
-        <tr>
-          <td>
-            <strong>Policy Number</strong>
-          </td>
+    .detail-row {
+      border-bottom: 1px solid #edf0f4;
+    }
 
-          <td>
-            ${policy.policyNumber}
-          </td>
-        </tr>
+    .detail-row:last-child {
+      border-bottom: 0;
+    }
 
-        <tr>
-          <td>
-            <strong>Vehicle Number</strong>
-          </td>
+    .detail-label {
+      width: 42%;
+      padding: 14px 16px;
+      background: #f8fafc;
+      color: #667085;
+      font-size: 13px;
+      line-height: 1.5;
+      vertical-align: top;
+    }
 
-          <td>
-            ${policy.vehicleNo}
-          </td>
-        </tr>
+    .detail-value {
+      padding: 14px 16px;
+      color: #1f2937;
+      font-size: 13px;
+      line-height: 1.5;
+      font-weight: 650;
+      vertical-align: top;
+    }
 
-        <tr>
-          <td>
-            <strong>Insurer</strong>
-          </td>
+    .expiry-card {
+      margin-top: 18px;
+      padding: 18px;
+      border: 1px solid #dbeafe;
+      border-radius: 14px;
+      background: #f8fbff;
+    }
 
-          <td>
-            ${policy.insurerCompany}
-          </td>
-        </tr>
+    .expiry-label {
+      color: #64748b;
+      font-size: 12px;
+      line-height: 1.4;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      font-weight: 700;
+    }
 
-        <tr>
-          <td>
-            <strong>Policy Expiry Date</strong>
-          </td>
+    .expiry-date {
+      margin-top: 5px;
+      color: #123b70;
+      font-size: 20px;
+      line-height: 1.35;
+      font-weight: 750;
+    }
 
-          <td>
-            ${expiryDate}
-          </td>
-        </tr>
+    .cta-wrap {
+      margin-top: 28px;
+      padding: 22px;
+      border-radius: 14px;
+      background: #f8fafc;
+      border: 1px solid #e8edf3;
+    }
 
-      </table>
+    .cta-title {
+      margin: 0;
+      color: #172033;
+      font-size: 15px;
+      line-height: 1.5;
+      font-weight: 700;
+    }
 
-      <p style="margin-top: 20px;">
-        Please contact us if you would like
-        to renew your policy.
-      </p>
+    .cta-text {
+      margin: 7px 0 0;
+      color: #667085;
+      font-size: 13px;
+      line-height: 1.65;
+    }
 
-      <p>
-        Regards,<br />
-        <strong>Insurance Team</strong>
-      </p>
+    .footer {
+      padding: 24px 34px 30px;
+      background: #f8fafc;
+      border-top: 1px solid #edf0f4;
+    }
 
-    </div>
+    .footer-text {
+      margin: 0;
+      color: #667085;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .footer-brand {
+      margin-top: 12px;
+      color: #123b70;
+      font-size: 13px;
+      line-height: 1.5;
+      font-weight: 750;
+    }
+
+    @media only screen and (max-width: 600px) {
+      .email-wrapper {
+        padding: 12px 8px;
+      }
+
+      .header {
+        padding: 24px 22px;
+      }
+
+      .content {
+        padding: 26px 20px;
+      }
+
+      .footer {
+        padding: 22px 20px 26px;
+      }
+
+      .heading {
+        font-size: 23px;
+      }
+
+      .detail-label,
+      .detail-value {
+        display: block;
+        width: auto;
+        padding: 10px 14px;
+      }
+
+      .detail-label {
+        padding-bottom: 3px;
+        border-bottom: 0;
+      }
+
+      .detail-value {
+        padding-top: 3px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <table
+    role="presentation"
+    width="100%"
+    cellpadding="0"
+    cellspacing="0"
+    border="0"
+  >
+    <tr>
+      <td class="email-wrapper">
+        <table
+          role="presentation"
+          class="email-container"
+          width="100%"
+          cellpadding="0"
+          cellspacing="0"
+          border="0"
+        >
+          <!-- HEADER -->
+          <tr>
+            <td class="header">
+              <div class="brand">
+                Insurance Services
+              </div>
+              <div class="brand-subtitle">
+                Policy protection &amp; renewal support
+              </div>
+            </td>
+          </tr>
+
+          <!-- CONTENT -->
+          <tr>
+            <td class="content">
+              <p class="eyebrow">
+                ${statusLabel}
+              </p>
+
+              <h1 class="heading">
+                ${heading}
+              </h1>
+
+              <p class="greeting">
+                Dear <strong>${customerName}</strong>,
+              </p>
+
+              <p class="message">
+                ${message}
+              </p>
+
+              <div class="status">
+                <div class="status-label">
+                  ${statusLabel}
+                </div>
+                <div class="status-detail">
+                  ${urgencyText}
+                </div>
+              </div>
+
+              <div class="section-title">
+                Policy Information
+              </div>
+
+              <table
+                role="presentation"
+                class="details"
+                width="100%"
+                cellpadding="0"
+                cellspacing="0"
+                border="0"
+              >
+                <tr class="detail-row">
+                  <td class="detail-label">
+                    Policy Number
+                  </td>
+                  <td class="detail-value">
+                    ${policyNumber}
+                  </td>
+                </tr>
+
+                <tr class="detail-row">
+                  <td class="detail-label">
+                    Policy Type
+                  </td>
+                  <td class="detail-value">
+                    ${policyType}
+                  </td>
+                </tr>
+
+                <tr class="detail-row">
+                  <td class="detail-label">
+                    Vehicle Number
+                  </td>
+                  <td class="detail-value">
+                    ${vehicleNumber}
+                  </td>
+                </tr>
+
+                <tr class="detail-row">
+                  <td class="detail-label">
+                    Insurer
+                  </td>
+                  <td class="detail-value">
+                    ${insurer}
+                  </td>
+                </tr>
+
+                <tr class="detail-row">
+                  <td class="detail-label">
+                    Renewal Premium
+                  </td>
+                  <td class="detail-value">
+                    ${premium}
+                  </td>
+                </tr>
+              </table>
+
+              <div class="expiry-card">
+                <div class="expiry-label">
+                  Policy Expiry Date
+                </div>
+                <div class="expiry-date">
+                  ${expiryDate}
+                </div>
+              </div>
+
+              <div class="cta-wrap">
+                <p class="cta-title">
+                  Keep your coverage active
+                </p>
+
+                <p class="cta-text">
+                  Please review your policy details and
+                  contact our insurance team if you would
+                  like to proceed with renewal or need
+                  assistance with your policy.
+                </p>
+              </div>
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td class="footer">
+              <p class="footer-text">
+                This is an automated policy reminder
+                sent for your insurance records. Please
+                do not reply to this email if your insurer
+                requires communication through a specific
+                support channel.
+              </p>
+
+              <div class="footer-brand">
+                Insurance Team
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
   `;
 };
 
